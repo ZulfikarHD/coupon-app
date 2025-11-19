@@ -57,6 +57,7 @@ const props = defineProps<Props>();
 
 const qrCodeDataUrl = ref('');
 const barcodeDataUrl = ref('');
+const isCopying = ref(false);
 
 const statusColors = {
     active: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
@@ -75,13 +76,63 @@ const actionLabels = {
     reversed: 'Dibatalkan',
 };
 
-const copyToClipboard = async () => {
+const copyToClipboard = async (event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    isCopying.value = true;
+    
+    // Build the URL to copy
+    const urlToCopy = props.publicUrl || `${window.location.origin}/coupon/${props.coupon.code}`;
+    
     try {
-        await navigator.clipboard.writeText(props.publicUrl);
-        // You could add a toast notification here
-        alert('Link berhasil disalin!');
+        // Try modern clipboard API first (works in HTTPS or localhost)
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(urlToCopy);
+            isCopying.value = false;
+            alert('Link berhasil disalin ke clipboard!');
+            return;
+        }
+        
+        // Fallback for older browsers or non-secure contexts
+        const textArea = document.createElement('textarea');
+        textArea.value = urlToCopy;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        textArea.style.opacity = '0';
+        textArea.setAttribute('readonly', '');
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        textArea.setSelectionRange(0, urlToCopy.length);
+        
+        try {
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            isCopying.value = false;
+            if (successful) {
+                alert('Link berhasil disalin ke clipboard!');
+            } else {
+                throw new Error('Copy command failed');
+            }
+        } catch (err) {
+            document.body.removeChild(textArea);
+            isCopying.value = false;
+            // Last resort: show the URL in a prompt for manual copy
+            const copied = prompt('Salin link ini (Ctrl+C atau Cmd+C):', urlToCopy);
+            if (copied !== null) {
+                alert('Link siap untuk disalin!');
+            }
+        }
     } catch (err) {
         console.error('Failed to copy:', err);
+        isCopying.value = false;
+        // Final fallback: show prompt
+        const copied = prompt('Salin link ini (Ctrl+C atau Cmd+C):', urlToCopy);
+        if (copied !== null) {
+            alert('Link siap untuk disalin!');
+        }
     }
 };
 
@@ -144,10 +195,11 @@ const breadcrumbs = [
                     <Button
                         variant="outline"
                         class="h-11 gap-2"
+                        :disabled="isCopying"
                         @click="copyToClipboard"
                     >
                         <Copy class="h-4 w-4" />
-                        <span class="hidden sm:inline">Salin Link</span>
+                        <span class="hidden sm:inline">{{ isCopying ? 'Menyalin...' : 'Salin Link' }}</span>
                     </Button>
                     <Button
                         variant="destructive"
