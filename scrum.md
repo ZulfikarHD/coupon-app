@@ -17,9 +17,6 @@ Good call - that simplifies things significantly. Let me revise the scrum to foc
 - [ ] Install Laravel Breeze for authentication
 - [ ] Set up Git repository
 - [ ] Configure environment variables (.env)
-- [ ] Install required packages:
-  - `simplesoftwareio/simple-qrcode`
-  - `barryvdh/laravel-dompdf` (optional for printing)
 - [ ] Set up Tailwind CSS (if using Breeze with Blade)
 - [ ] Create base layout template with sidebar navigation
 
