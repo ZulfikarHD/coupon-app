@@ -80,7 +80,7 @@ class CouponController extends Controller
         ]);
 
         // Use Job to create coupon synchronously (dispatchSync for immediate execution)
-        $coupon = GenerateCouponCode::dispatchSync([
+        GenerateCouponCode::dispatchSync([
             'type' => $validated['type'],
             'description' => $validated['description'],
             'customer_name' => $validated['customer_name'],
@@ -91,6 +91,15 @@ class CouponController extends Controller
             'status' => Coupon::STATUS_ACTIVE,
             'created_by' => Auth::id(),
         ]);
+
+        // Get the created coupon by matching the submitted data
+        // This is more reliable than just getting the latest
+        $coupon = Coupon::where('created_by', Auth::id())
+            ->where('customer_name', $validated['customer_name'])
+            ->where('customer_phone', $validated['customer_phone'])
+            ->where('type', $validated['type'])
+            ->latest('id')
+            ->firstOrFail();
 
         return redirect()
             ->route('coupons.show', $coupon->id)
