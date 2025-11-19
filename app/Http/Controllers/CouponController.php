@@ -79,12 +79,20 @@ class CouponController extends Controller
             'expires_at' => ['nullable', 'date'],
         ]);
 
+        // Normalize phone number before creating coupon (same as model mutator)
+        $phone = preg_replace('/[^0-9]/', '', $validated['customer_phone']);
+        if (substr($phone, 0, 1) === '0') {
+            $phone = '62' . substr($phone, 1);
+        } elseif (substr($phone, 0, 2) !== '62') {
+            $phone = '62' . $phone;
+        }
+
         // Use Job to create coupon synchronously (dispatchSync for immediate execution)
         GenerateCouponCode::dispatchSync([
             'type' => $validated['type'],
             'description' => $validated['description'],
             'customer_name' => $validated['customer_name'],
-            'customer_phone' => $validated['customer_phone'],
+            'customer_phone' => $phone, // Use normalized phone
             'customer_email' => $validated['customer_email'] ?? null,
             'customer_social_media' => $validated['customer_social_media'] ?? null,
             'expires_at' => $validated['expires_at'] ?? null,
@@ -92,14 +100,22 @@ class CouponController extends Controller
             'created_by' => Auth::id(),
         ]);
 
-        // Get the created coupon by matching the submitted data
-        // This is more reliable than just getting the latest
+        // Get the created coupon - use multiple fallback strategies
+        // First try to match by all fields, then fallback to latest by this user
         $coupon = Coupon::where('created_by', Auth::id())
             ->where('customer_name', $validated['customer_name'])
-            ->where('customer_phone', $validated['customer_phone'])
+            ->where('customer_phone', $phone) // Use normalized phone
             ->where('type', $validated['type'])
             ->latest('id')
-            ->firstOrFail();
+            ->first();
+
+        // Fallback: if not found, get the latest coupon created by this user
+        // (in case there's a timing issue or normalization difference)
+        if (!$coupon) {
+            $coupon = Coupon::where('created_by', Auth::id())
+                ->latest('id')
+                ->firstOrFail();
+        }
 
         return redirect()
             ->route('coupons.show', $coupon->id)
