@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateCouponCode;
 use App\Models\Coupon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -79,6 +80,8 @@ class CouponController extends Controller
             'expires_at' => ['nullable', 'date'],
         ]);
 
+        // Dispatch job to create coupon (or create directly for synchronous processing)
+        // For now, creating directly since queue might not be configured
         $code = $this->generateCouponCode();
 
         $coupon = Coupon::create([
@@ -93,6 +96,20 @@ class CouponController extends Controller
             'status' => Coupon::STATUS_ACTIVE,
             'created_by' => Auth::id(),
         ]);
+
+        // Alternative: Use Job for async processing (uncomment if queue is configured)
+        // GenerateCouponCode::dispatch([
+        //     'type' => $validated['type'],
+        //     'description' => $validated['description'],
+        //     'customer_name' => $validated['customer_name'],
+        //     'customer_phone' => $validated['customer_phone'],
+        //     'customer_email' => $validated['customer_email'] ?? null,
+        //     'customer_social_media' => $validated['customer_social_media'] ?? null,
+        //     'expires_at' => $validated['expires_at'] ?? null,
+        //     'status' => Coupon::STATUS_ACTIVE,
+        //     'created_by' => Auth::id(),
+        // ]);
+        // return redirect()->route('coupons.index')->with('success', 'Kupon sedang dibuat...');
 
         return redirect()
             ->route('coupons.show', $coupon->id)
