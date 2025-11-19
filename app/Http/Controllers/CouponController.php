@@ -2,24 +2,66 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateCouponCode;
+use App\Models\Coupon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class CouponController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request): Response
     {
-        //
+        $query = Coupon::with('user')
+            ->orderBy('created_at', 'desc');
+
+        // Status filter
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        // Search filter (code, name, phone)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                    ->orWhere('customer_name', 'like', "%{$search}%")
+                    ->orWhere('customer_phone', 'like', "%{$search}%");
+            });
+        }
+
+        // Date range filter
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $coupons = $query->paginate(20)->withQueryString();
+
+        // Append formatted_phone to each coupon
+        $coupons->getCollection()->transform(function ($coupon) {
+            $coupon->formatted_phone = $coupon->formatted_phone;
+            return $coupon;
+        });
+
+        return Inertia::render('coupons/Index', [
+            'coupons' => $coupons,
+            'filters' => $request->only(['status', 'search', 'date_from', 'date_to']),
+        ]);
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(): Response
     {
-        //
+        return Inertia::render('coupons/Create');
     }
 
     /**
@@ -27,31 +69,79 @@ class CouponController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'type' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string'],
+            'customer_name' => ['required', 'string', 'max:255'],
+            'customer_phone' => ['required', 'string'],
+            'customer_email' => ['nullable', 'email', 'max:255'],
+            'customer_social_media' => ['nullable', 'string', 'max:255'],
+            'expires_at' => ['nullable', 'date'],
+        ]);
+
+        // Normalize phone number before creating coupon (same as model mutator)
+        $phone = preg_replace('/[^0-9]/', '', $validated['customer_phone']);
+        if (substr($phone, 0, 1) === '0') {
+            $phone = '62' . substr($phone, 1);
+        } elseif (substr($phone, 0, 2) !== '62') {
+            $phone = '62' . $phone;
+        }
+
+        // Use Job to create coupon synchronously (dispatchSync for immediate execution)
+        GenerateCouponCode::dispatchSync([
+            'type' => $validated['type'],
+            'description' => $validated['description'],
+            'customer_name' => $validated['customer_name'],
+            'customer_phone' => $phone, // Use normalized phone
+            'customer_email' => $validated['customer_email'] ?? null,
+            'customer_social_media' => $validated['customer_social_media'] ?? null,
+            'expires_at' => $validated['expires_at'] ?? null,
+            'status' => Coupon::STATUS_ACTIVE,
+            'created_by' => Auth::id(),
+        ]);
+
+        // Get the created coupon - use multiple fallback strategies
+        // First try to match by all fields, then fallback to latest by this user
+        $coupon = Coupon::where('created_by', Auth::id())
+            ->where('customer_name', $validated['customer_name'])
+            ->where('customer_phone', $phone) // Use normalized phone
+            ->where('type', $validated['type'])
+            ->latest('id')
+            ->first();
+
+        // Fallback: if not found, get the latest coupon created by this user
+        // (in case there's a timing issue or normalization difference)
+        if (!$coupon) {
+            $coupon = Coupon::where('created_by', Auth::id())
+                ->latest('id')
+                ->firstOrFail();
+        }
+
+        return redirect()
+            ->route('coupons.show', $coupon->id)
+            ->with('success', 'Kupon berhasil dibuat!');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(string $id): Response
     {
-        //
-    }
+        $coupon = Coupon::with(['user', 'validations.validator'])
+            ->findOrFail($id);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
+        // Generate QR code URL (public coupon view)
+        $qrUrl = route('coupons.public', $coupon->code);
+        $publicUrl = url('/coupon/' . $coupon->code);
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
+        // Append formatted_phone
+        $coupon->formatted_phone = $coupon->formatted_phone;
+
+        return Inertia::render('coupons/Show', [
+            'coupon' => $coupon,
+            'qrUrl' => $qrUrl,
+            'publicUrl' => $publicUrl,
+        ]);
     }
 
     /**
@@ -59,6 +149,11 @@ class CouponController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        $coupon = Coupon::findOrFail($id);
+        $coupon->delete();
+
+        return redirect()
+            ->route('coupons.index')
+            ->with('success', 'Kupon berhasil dihapus!');
     }
 }
