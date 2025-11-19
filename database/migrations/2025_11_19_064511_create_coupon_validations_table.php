@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('coupon_validations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('coupon_id')->constrained('coupons');
-            $table->foreignId('validated_by')->constrained('users');
+            $table->foreignId('validated_by')->constrained('users')->index();
             $table->dateTime('validated_at');
             $table->enum('action', ['used', 'reversed']);
             $table->text('notes')->nullable();

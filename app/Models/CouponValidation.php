@@ -9,6 +9,9 @@ class CouponValidation extends Model
 {
     use HasFactory;
 
+    public const ACTION_USED = 'used';
+    public const ACTION_REVERSED = 'reversed';
+
     protected $fillable = [
         'coupon_id',
         'validated_by',
@@ -16,4 +19,24 @@ class CouponValidation extends Model
         'action',
         'notes',
     ];
+
+    protected $casts = [
+        'validated_at' => 'datetime',
+    ];
+
+    /**
+     * Relationship to coupon
+     */
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
+    }
+
+    /**
+     * Relationship to user who validated
+     */
+    public function validator()
+    {
+        return $this->belongsTo(User::class, 'validated_by');
+    }
 }
