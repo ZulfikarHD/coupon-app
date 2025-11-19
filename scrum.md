@@ -1,0 +1,943 @@
+Good call - that simplifies things significantly. Let me revise the scrum to focus **only on coupons** with customer info embedded directly.
+
+## Revised Scrum Backlog: Coupon Management System (No Separate Customers)
+
+---
+
+## **SPRINT 0: Project Setup** (3-5 days)
+
+### User Story 0.1: Project Initialization
+**As a** developer  
+**I want to** set up the Laravel project foundation  
+**So that** I can start building features
+
+**Tasks:**
+- [ ] Install Laravel (latest stable version)
+- [ ] Configure database connection
+- [ ] Install Laravel Breeze for authentication
+- [ ] Set up Git repository
+- [ ] Configure environment variables (.env)
+- [ ] Install required packages:
+  - `simplesoftwareio/simple-qrcode`
+  - `barryvdh/laravel-dompdf` (optional for printing)
+- [ ] Set up Tailwind CSS (if using Breeze with Blade)
+- [ ] Create base layout template with sidebar navigation
+
+**Acceptance Criteria:**
+- Laravel application runs without errors
+- Authentication works (login/logout)
+- Database connection established
+- Git initialized with initial commit
+
+**Story Points:** 3
+
+---
+
+## **SPRINT 1: Core Coupon System** (1 week)
+
+### User Story 1.1: Coupon Database Structure
+**As a** developer  
+**I want** coupon data structure in place  
+**So that** I can implement coupon features
+
+**Tasks:**
+- [ ] Create `coupons` migration with fields:
+  - id
+  - code (unique, indexed)
+  - type (string) // "Gratis 1 Kopi", "Diskon 20%", etc
+  - description (text)
+  - customer_name (string)
+  - customer_phone (string, indexed)
+  - customer_email (nullable)
+  - customer_social_media (nullable)
+  - expires_at (nullable)
+  - status (enum: 'active', 'used', 'expired')
+  - created_by (user_id - staff who created it)
+  - timestamps
+- [ ] Create `coupon_validations` migration with fields:
+  - id
+  - coupon_id (foreign key)
+  - validated_by (user_id - staff who validated)
+  - validated_at
+  - action (enum: 'used', 'reversed')
+  - notes (nullable, text) // For reversal reasons
+  - timestamps
+- [ ] Create Coupon model with:
+  - Fillable fields
+  - Phone normalization mutator
+  - Status constants/enum
+  - Scopes (active, used, expired)
+  - Relationships (belongsTo User for created_by)
+- [ ] Create CouponValidation model
+- [ ] Create helper function `generateCouponCode()`
+- [ ] Write tests for code generation uniqueness
+
+**Acceptance Criteria:**
+- Migrations run successfully
+- Coupon codes are unique and follow format (ABC-1234-XYZ)
+- Phone normalization works (08xx → 628xx)
+- Status enum works correctly
+- Relationships work
+
+**Story Points:** 5
+
+---
+
+### User Story 1.2: Coupon Creation Interface
+**As a** staff member  
+**I want to** create coupons with customer information  
+**So that** I can give customers incentives
+
+**Tasks:**
+- [ ] Create CouponController with store method
+- [ ] Create `coupons/create.blade.php` with form:
+  - Customer Info Section:
+    - Name (required)
+    - Phone (required)
+    - Email (nullable)
+    - Social Media (nullable)
+  - Coupon Info Section:
+    - Type (text input - what it's for)
+    - Description (textarea)
+    - Expiration date (optional date picker)
+- [ ] Add form validation:
+  - Name required
+  - Phone required & normalized
+  - Type required
+  - Description required
+- [ ] Generate coupon code automatically on submit
+- [ ] Save coupon to database
+- [ ] Redirect to coupon detail page after creation
+- [ ] Show success message with "Copy Link" button
+
+**Acceptance Criteria:**
+- Form validates all required fields
+- Phone number is normalized before saving
+- Coupon code is generated automatically
+- Success message appears
+- Can quickly create another coupon (clear form or back button)
+
+**Story Points:** 8
+
+---
+
+### User Story 1.3: Coupon List with Filters
+**As a** staff member  
+**I want to** view all coupons with filtering options  
+**So that** I can find specific coupons quickly
+
+**Tasks:**
+- [ ] Create `coupons/index.blade.php` with:
+  - Table listing columns:
+    - Code
+    - Customer Name
+    - Phone
+    - Type
+    - Status (badge with colors)
+    - Created Date
+    - Expires Date
+    - Actions (View button)
+  - Filter section:
+    - Status dropdown (All/Active/Used/Expired)
+    - Search input (by code, name, or phone)
+    - Date range filter (created between X and Y)
+  - Pagination (20 per page)
+- [ ] Implement filters in controller (index method)
+- [ ] Add search query for code/name/phone
+- [ ] Add date range filtering
+- [ ] Make table responsive (stack on mobile)
+
+**Acceptance Criteria:**
+- All coupons are listed with pagination
+- Status filter works correctly
+- Search finds coupons by code, name, or phone
+- Date range filter works
+- Status badges show correct colors (green/gray/red)
+- Responsive on mobile
+
+**Story Points:** 8
+
+---
+
+### User Story 1.4: Coupon Detail Page
+**As a** staff member  
+**I want to** view complete coupon information  
+**So that** I can see all details and history
+
+**Tasks:**
+- [ ] Create `coupons/show.blade.php` with sections:
+  - **Coupon Info Card:**
+    - Code (large, prominent)
+    - Type
+    - Description
+    - Status badge
+    - Created date
+    - Expires date (if set)
+    - Created by (staff name)
+  - **Customer Info Card:**
+    - Name
+    - Phone
+    - Email (if provided)
+    - Social Media (if provided)
+  - **QR Code Display:**
+    - Large QR code (scannable)
+    - Barcode below QR
+  - **Actions:**
+    - Copy Link button
+    - Print button (optional)
+    - Mark as Used button (if status = active)
+    - Reverse Usage button (if status = used)
+    - Delete button
+  - **Validation History Table** (if coupon has been used/reversed):
+    - Action (Used/Reversed)
+    - Validated by (staff name)
+    - Date & Time
+    - Notes (for reversals)
+- [ ] Generate QR code using SimpleSoftwareIO (URL to public page)
+- [ ] Generate barcode of coupon code
+- [ ] Implement copy link functionality (clipboard API)
+- [ ] Add print stylesheet (optional)
+
+**Acceptance Criteria:**
+- All information is clearly displayed
+- QR code is large and scannable
+- Copy link button works
+- Validation history shows all actions
+- Action buttons are contextual (based on status)
+
+**Story Points:** 8
+
+---
+
+### User Story 1.5: Phone Number Normalization Helper
+**As a** developer  
+**I want** consistent phone number storage  
+**So that** searching and duplicate detection works
+
+**Tasks:**
+- [ ] Create helper function in Coupon model:
+```php
+public function setCustomerPhoneAttribute($value) {
+    $phone = preg_replace('/[^0-9]/', '', $value);
+    if (substr($phone, 0, 1) === '0') {
+        $phone = '62' . substr($phone, 1);
+    }
+    $this->attributes['customer_phone'] = $phone;
+}
+```
+- [ ] Add accessor for display format:
+```php
+public function getFormattedPhoneAttribute() {
+    // 628123456789 → 0812-3456-789
+}
+```
+- [ ] Write unit tests for normalization
+- [ ] Test with various formats (08xx, +628xx, 628xx, 8xx)
+
+**Acceptance Criteria:**
+- All phone numbers stored in 628xx format
+- Display format shows 0812-xxx-xxx
+- Handles various input formats
+
+**Story Points:** 3
+
+---
+
+### **Sprint 1 Total Story Points:** 32
+
+**Sprint 1 Deliverables:**
+- Complete coupon CRUD (Create, Read, List)
+- Customer info embedded in coupons
+- Filters and search working
+- QR codes generated
+
+---
+
+## **SPRINT 2: Scanner & Validation** (1 week)
+
+### User Story 2.1: Dashboard Overview
+**As a** staff member  
+**I want to** see key metrics at a glance  
+**So that** I can monitor daily operations
+
+**Tasks:**
+- [ ] Create DashboardController
+- [ ] Create `dashboard.blade.php` with:
+  - **Stats Cards:**
+    - Active Coupons (count with status=active)
+    - Used Today (count with validated_at = today)
+    - Expiring This Week (expires_at within 7 days)
+    - Total Coupons Created
+  - **Recent Activity Feed:**
+    - Last 10 coupon validations
+    - Show: customer name, coupon type, validated by, time ago
+  - **Quick Actions:**
+    - Large "Buat Kupon Baru" button (blue)
+    - Large "Scan Kupon" button (green/orange, prominent)
+- [ ] Write efficient queries for stats
+- [ ] Eager load relationships for activity feed
+- [ ] Add loading states
+- [ ] Make responsive
+
+**Acceptance Criteria:**
+- Dashboard loads within 2 seconds
+- All stats are accurate
+- Recent activity shows latest validations
+- Quick action buttons work
+- Mobile responsive
+
+**Story Points:** 5
+
+---
+
+### User Story 2.2: Public Coupon View Page
+**As a** customer  
+**I want to** view my coupon on my phone  
+**So that** I can show it at the store
+
+**Tasks:**
+- [ ] Create public route `/coupon/{code}` (no auth)
+- [ ] Create CouponPublicController
+- [ ] Create `coupons/public.blade.php` with:
+  - Store logo/branding area (placeholder for now)
+  - Coupon type (large heading)
+  - Description (readable text)
+  - QR code (large, centered)
+  - Barcode
+  - Customer name only (privacy - no phone/email)
+  - Expiration date (if set)
+  - Status display:
+    - If active: Green badge "Aktif"
+    - If used: Gray badge "Sudah Terpakai" + timestamp
+    - If expired: Red badge "Kedaluwarsa"
+- [ ] Handle invalid coupon codes (404 page)
+- [ ] Make it mobile-first design
+- [ ] Add Open Graph meta tags (for WhatsApp sharing)
+- [ ] Test on actual mobile devices
+
+**Acceptance Criteria:**
+- Page loads without authentication
+- Works perfectly on mobile (customer's phone)
+- QR code is scannable
+- Status is immediately clear
+- Invalid codes show friendly error
+- WhatsApp preview shows correct info
+
+**Story Points:** 5
+
+---
+
+### User Story 2.3: QR Scanner Interface
+**As a** staff member  
+**I want to** scan QR codes with my device  
+**So that** I can validate coupons quickly
+
+**Tasks:**
+- [ ] Create `/scan` route (requires auth)
+- [ ] Create ScanController
+- [ ] Create `scan/index.blade.php` with:
+  - Camera view (full width)
+  - QR scanner interface
+  - "Atau masukkan kode manual" section (collapsible)
+  - Manual input field + submit button
+  - Instructions: "Arahkan kamera ke QR Code kupon"
+  - Scanning status indicator
+- [ ] Install `html5-qrcode` via npm
+- [ ] Implement scanning logic:
+  - Request camera permission
+  - Start scanner on page load
+  - Decode QR code
+  - Extract coupon code from URL
+  - Make AJAX call to `/api/coupons/{code}/check`
+  - Show confirmation modal with data
+- [ ] Handle errors:
+  - Camera permission denied
+  - Invalid QR code
+  - Coupon not found
+  - Network errors
+- [ ] Add manual input fallback
+- [ ] Test on mobile devices (primary use case)
+
+**Acceptance Criteria:**
+- Camera activates automatically (with permission)
+- QR codes are scanned accurately
+- Manual input works as backup
+- Error messages are clear
+- Works on staff mobile phones
+- Loading states during processing
+
+**Story Points:** 8
+
+---
+
+### User Story 2.4: Coupon Validation Check API
+**As a** system  
+**I want** to validate coupon status before marking as used  
+**So that** errors are prevented
+
+**Tasks:**
+- [ ] Create API route `GET /api/coupons/{code}/check`
+- [ ] Return JSON with:
+  - Coupon exists (true/false)
+  - Coupon data (if exists):
+    - Code
+    - Type
+    - Description
+    - Customer name
+    - Status
+    - Expires at
+  - Validation status:
+    - `can_validate: true/false`
+    - `message: "reason if can't validate"`
+- [ ] Check conditions:
+  - Coupon exists
+  - Status is 'active' (not used/expired)
+  - Not expired (if expires_at is set)
+- [ ] Return appropriate HTTP codes:
+  - 200: Valid, can be used
+  - 404: Coupon not found
+  - 422: Can't be used (already used/expired)
+
+**Acceptance Criteria:**
+- API returns correct data
+- Validation logic is accurate
+- Error messages are descriptive
+- Response time < 500ms
+
+**Story Points:** 3
+
+---
+
+### User Story 2.5: Validation Confirmation Modal
+**As a** staff member  
+**I want to** confirm coupon usage with my password  
+**So that** validations are secure
+
+**Tasks:**
+- [ ] Create validation modal component (Blade or Alpine.js)
+- [ ] Display after successful scan/check:
+  - Modal title: "Konfirmasi Penggunaan Kupon"
+  - Coupon info display:
+    - Code (read-only)
+    - Type
+    - Description
+    - Customer name
+  - Password input field (current user's password)
+  - Two buttons:
+    - "Konfirmasi Penggunaan" (primary, green)
+    - "Batal" (secondary, gray)
+- [ ] On confirm button click:
+  - Validate password field is filled
+  - Submit to validation endpoint
+  - Show loading state
+  - Handle response
+- [ ] On cancel: close modal, return to scanner
+
+**Acceptance Criteria:**
+- Modal appears after successful scan
+- All coupon info is displayed
+- Password is required
+- Submit button is disabled during loading
+- Cancel button works
+
+**Story Points:** 5
+
+---
+
+### User Story 2.6: Coupon Validation Execution
+**As a** staff member  
+**I want to** mark coupons as used  
+**So that** they can't be reused
+
+**Tasks:**
+- [ ] Create route `POST /coupons/{code}/validate`
+- [ ] In controller method:
+  - Verify user password (Hash::check)
+  - Verify coupon is still active
+  - Update coupon:
+    - Set status = 'used'
+  - Create coupon_validations record:
+    - coupon_id
+    - validated_by = Auth::id()
+    - validated_at = now()
+    - action = 'used'
+  - Return success response
+- [ ] Handle errors:
+  - Wrong password → 401 with message
+  - Coupon already used → 422 with message
+  - Coupon expired → 422 with message
+  - Coupon not found → 404
+- [ ] Show success message on scanner page
+- [ ] Auto-restart scanner after 3 seconds (or manual continue)
+
+**Acceptance Criteria:**
+- Password verification works
+- Coupon status changes to 'used'
+- Validation is logged
+- Errors are handled gracefully
+- Success message is clear
+- Can scan next coupon immediately
+
+**Story Points:** 8
+
+---
+
+### User Story 2.7: Reversal Feature
+**As an** admin/staff  
+**I want to** reverse accidental validations  
+**So that** I can fix mistakes
+
+**Tasks:**
+- [ ] Add "Batalkan Penggunaan" button on coupon detail page
+- [ ] Show button only if coupon status = 'used'
+- [ ] Create reversal modal:
+  - Warning text: "Anda yakin ingin membatalkan penggunaan kupon ini?"
+  - Password input (required)
+  - Reason textarea (required, min 10 chars)
+  - "Konfirmasi Pembatalan" button (red)
+  - "Batal" button
+- [ ] Create route `POST /coupons/{id}/reverse`
+- [ ] In controller:
+  - Verify password
+  - Verify coupon status = 'used'
+  - Update coupon status back to 'active'
+  - Create coupon_validations record:
+    - action = 'reversed'
+    - notes = reason from form
+    - validated_by = Auth::id()
+  - Return success
+- [ ] Refresh page after reversal
+- [ ] Show success message
+
+**Acceptance Criteria:**
+- Reversal button appears only for used coupons
+- Password required
+- Reason required (minimum 10 characters)
+- Coupon becomes active again
+- Reversal is logged in validation history
+- Success feedback is clear
+
+**Story Points:** 5
+
+---
+
+### **Sprint 2 Total Story Points:** 39
+
+**Sprint 2 Deliverables:**
+- Working dashboard
+- Public coupon view page
+- QR scanner functional
+- Validation with password works
+- Reversal feature complete
+
+---
+
+## **SPRINT 3: Reports, Search & Polish** (1 week)
+
+### User Story 3.1: Advanced Coupon Search
+**As a** staff member  
+**I want** better search capabilities  
+**So that** I can find coupons by customer info
+
+**Tasks:**
+- [ ] Enhance search in coupons/index to search across:
+  - Coupon code
+  - Customer name
+  - Customer phone
+  - Coupon type
+- [ ] Add "Advanced Search" collapsible section:
+  - Customer name field
+  - Customer phone field
+  - Coupon type field
+  - Status multi-select
+  - Date range (created between)
+  - Date range (expires between)
+- [ ] Implement query builder with all filters
+- [ ] Show active filters as badges
+- [ ] Add "Clear Filters" button
+- [ ] Save search params in URL (for bookmarking)
+
+**Acceptance Criteria:**
+- Can search by any customer field
+- Multiple filters work together
+- Search is fast (< 1 second)
+- URL reflects current filters
+- Clear filters works
+
+**Story Points:** 5
+
+---
+
+### User Story 3.2: Reports Dashboard
+**As an** admin  
+**I want to** see coupon usage analytics  
+**So that** I can track business performance
+
+**Tasks:**
+- [ ] Create ReportController
+- [ ] Create `reports/index.blade.php` with:
+  - Date range picker (default: last 30 days)
+  - **Summary Stats Cards:**
+    - Total Coupons Created (in period)
+    - Total Coupons Used (in period)
+    - Redemption Rate % (used/created * 100)
+    - Currently Active Coupons
+  - **Top Coupon Types Table:**
+    - Type name
+    - Count created
+    - Count used
+    - Usage rate %
+  - **Daily Usage Chart** (optional):
+    - Line chart showing validations per day
+  - **Export Buttons:**
+    - Export to Excel
+    - Export to CSV
+- [ ] Write queries with date filtering
+- [ ] Group by coupon type for stats
+- [ ] Calculate redemption rates
+- [ ] Add loading states
+
+**Acceptance Criteria:**
+- Date range filter works
+- All stats are accurate
+- Top types are correctly ranked
+- Export buttons are visible (functional in next story)
+- Charts display correctly (if implemented)
+
+**Story Points:** 8
+
+---
+
+### User Story 3.3: Export Coupons to Excel/CSV
+**As an** admin  
+**I want to** export coupon data  
+**So that** I can analyze externally
+
+**Tasks:**
+- [ ] Install `maatwebsite/excel` package
+- [ ] Create CouponExport class implementing FromCollection
+- [ ] Define export columns:
+  - Coupon Code
+  - Customer Name
+  - Customer Phone
+  - Customer Email
+  - Customer Social Media
+  - Type
+  - Description
+  - Status
+  - Created Date
+  - Expires Date
+  - Validated Date (if used)
+  - Validated By (staff name, if used)
+- [ ] Apply same filters as reports page
+- [ ] Create routes:
+  - `GET /reports/export?format=xlsx&from=X&to=Y`
+  - `GET /reports/export?format=csv&from=X&to=Y`
+- [ ] Generate filename with date: `coupons_2024-11-19.xlsx`
+- [ ] Handle large datasets (queue if > 5000 rows)
+- [ ] Show download notification
+
+**Acceptance Criteria:**
+- Excel export works
+- CSV export works
+- All columns are included
+- Date range filter applies
+- Filename includes current date
+- Large exports don't timeout
+
+**Story Points:** 5
+
+---
+
+### User Story 3.4: Frequent Customers Report
+**As an** admin  
+**I want to** see which phone numbers receive coupons most  
+**So that** I can identify loyal customers
+
+**Tasks:**
+- [ ] Add "Pelanggan Sering" section to reports
+- [ ] Query coupons grouped by customer_phone:
+  - Count total coupons per phone
+  - Count used coupons per phone
+  - Calculate usage rate per phone
+  - Get latest coupon date per phone
+- [ ] Display table:
+  - Customer Name (from latest coupon)
+  - Phone
+  - Total Coupons Received
+  - Total Used
+  - Usage Rate %
+  - Last Coupon Date
+- [ ] Order by total coupons DESC
+- [ ] Limit to top 20
+- [ ] Apply date range filter (optional)
+- [ ] Add "View All Coupons" link per customer
+
+**Acceptance Criteria:**
+- Top customers correctly identified
+- Usage rate calculated correctly
+- Can view customer's coupon history
+- Date filter works
+
+**Story Points:** 5
+
+---
+
+### User Story 3.5: Automatic Coupon Expiration
+**As a** system  
+**I want to** automatically mark expired coupons  
+**So that** status is always current
+
+**Tasks:**
+- [ ] Create Artisan command: `php artisan coupons:expire`
+- [ ] Command logic:
+  - Query coupons where:
+    - status = 'active'
+    - expires_at IS NOT NULL
+    - expires_at < now()
+  - Update status to 'expired'
+  - Log count of expired coupons
+- [ ] Register command in Kernel.php
+- [ ] Schedule to run daily at midnight:
+```php
+$schedule->command('coupons:expire')->daily();
+```
+- [ ] Test command manually
+- [ ] Write unit test for command
+- [ ] Document cron setup for production
+
+**Acceptance Criteria:**
+- Command runs without errors
+- Expired coupons are marked correctly
+- Command logs output
+- Can be run manually
+- Scheduled task configured
+
+**Story Points:** 3
+
+---
+
+### User Story 3.6: Navigation & UI Polish
+**As a** staff member  
+**I want** consistent, intuitive UI  
+**So that** the app is pleasant to use
+
+**Tasks:**
+- [ ] Finalize sidebar navigation (4 menus):
+  - 📊 Dashboard
+  - 🎟️ Kupon (with "Buat Baru" submenu)
+  - 📷 Scan Kupon (highlighted - green/orange)
+  - 📈 Laporan
+- [ ] Add active state highlighting
+- [ ] Make sidebar collapsible on mobile (hamburger)
+- [ ] Add breadcrumbs to all pages
+- [ ] Standardize colors:
+  - Primary: Blue (#3B82F6)
+  - Success: Green (#10B981)
+  - Danger: Red (#EF4444)
+  - Warning: Orange (#F59E0B)
+  - Scan button: Green/Orange (prominent)
+- [ ] Add loading spinners for async actions:
+  - Scanning
+  - Validating
+  - Exporting
+- [ ] Add toast notifications:
+  - Success (green)
+  - Error (red)
+  - Info (blue)
+- [ ] Test all pages on mobile (responsive)
+- [ ] Fix any layout issues
+- [ ] Add favicon
+
+**Acceptance Criteria:**
+- Navigation is consistent
+- Active menu highlighted
+- Mobile nav works smoothly
+- All buttons follow color scheme
+- Loading states are clear
+- Notifications are user-friendly
+- Fully responsive
+
+**Story Points:** 5
+
+---
+
+### User Story 3.7: Performance Optimization
+**As a** developer  
+**I want** fast page loads  
+**So that** staff can work efficiently
+
+**Tasks:**
+- [ ] Add database indexes:
+  - coupons.code (unique index)
+  - coupons.status (index)
+  - coupons.customer_phone (index)
+  - coupons.created_at (index)
+  - coupons.expires_at (index)
+  - coupon_validations.coupon_id (foreign key)
+  - coupon_validations.validated_by (index)
+- [ ] Optimize queries:
+  - Use select() to limit columns
+  - Eager load relationships (created_by, validations)
+  - Add pagination everywhere (20-50 per page)
+- [ ] Add query caching:
+  - Dashboard stats (cache 5 minutes)
+  - Reports stats (cache 10 minutes)
+- [ ] Test with large dataset:
+  - Seed 10,000 coupons
+  - Measure load times
+  - Optimize slow queries
+- [ ] Enable Laravel debugbar in dev
+- [ ] Check for N+1 queries
+
+**Acceptance Criteria:**
+- All pages load < 2 seconds
+- Search responds < 1 second
+- No N+1 query issues
+- Database properly indexed
+- Query count minimized
+
+**Story Points:** 5
+
+---
+
+### User Story 3.8: Testing & Bug Fixes
+**As a** developer  
+**I want** a stable, bug-free system  
+**So that** users have a smooth experience
+
+**Tasks:**
+- [ ] Create end-to-end testing checklist
+- [ ] Test all workflows:
+  - Create coupon → view public page → scan → validate
+  - Create coupon → mark as used → reverse
+  - Filter coupons by all criteria
+  - Export reports
+  - Search coupons
+- [ ] Test edge cases:
+  - Duplicate phone numbers (different names)
+  - Various phone formats (08xx, +62, 62, etc)
+  - Invalid QR codes
+  - Expired coupons
+  - Wrong passwords
+  - Camera permission denied
+  - Network errors during scan
+  - Empty states (no coupons, no reports)
+- [ ] Cross-browser testing (Chrome, Safari, Firefox)
+- [ ] Mobile device testing (iOS, Android)
+- [ ] Fix all identified bugs
+- [ ] Update README with:
+  - Installation instructions
+  - Features list
+  - Usage guide
+  - Deployment notes
+
+**Acceptance Criteria:**
+- All critical flows work flawlessly
+- Edge cases handled gracefully
+- No console errors
+- Works on all target browsers/devices
+- Documentation complete
+
+**Story Points:** 8
+
+---
+
+### **Sprint 3 Total Story Points:** 44
+
+**Sprint 3 Deliverables:**
+- Complete reports with analytics
+- Export functionality
+- Frequent customers tracking
+- Auto-expiration working
+- Polished, optimized UI
+- Production-ready system
+
+---
+
+## **Revised Project Summary**
+
+| Sprint | Focus | Story Points | Duration |
+|--------|-------|--------------|----------|
+| Sprint 0 | Setup | 3 | 3-5 days |
+| Sprint 1 | Core Coupons | 32 | 1 week |
+| Sprint 2 | Scanner & Validation | 39 | 1 week |
+| Sprint 3 | Reports & Polish | 44 | 1 week |
+| **Total MVP** | | **118** | **~4 weeks** |
+
+---
+
+## **Updated Menu Structure** (4 Menus Only)
+
+```
+Sidebar:
+├── 📊 Dashboard
+├── 🎟️ Kupon
+│   ├── Semua Kupon (index)
+│   └── Buat Kupon Baru (create)
+├── 📷 Scan Kupon (highlighted)
+└── 📈 Laporan
+```
+
+---
+
+## **Simplified Database Schema**
+
+```
+users (Laravel default)
+├── id
+├── name
+├── email
+├── password
+└── timestamps
+
+coupons
+├── id
+├── code (unique, indexed)
+├── type
+├── description
+├── customer_name
+├── customer_phone (indexed)
+├── customer_email (nullable)
+├── customer_social_media (nullable)
+├── expires_at (nullable, indexed)
+├── status (enum, indexed)
+├── created_by (foreign → users)
+└── timestamps
+
+coupon_validations
+├── id
+├── coupon_id (foreign → coupons)
+├── validated_by (foreign → users)
+├── validated_at
+├── action (enum: 'used', 'reversed')
+├── notes (nullable)
+└── timestamps
+```
+
+---
+
+## **Key Simplifications**
+
+**What we removed:**
+- ❌ Separate customers table
+- ❌ Customer CRUD interface
+- ❌ Customer detail pages
+- ❌ Customer loyalty tracking tables
+
+**What we kept:**
+- ✅ Customer info embedded in each coupon
+- ✅ Phone number normalization
+- ✅ Frequent customers report (grouped by phone)
+- ✅ Customer search in coupons list
+
+**Benefits:**
+- Simpler database structure
+- Fewer relationships to manage
+- Faster development time
+- Less code to maintain
+- Still tracks customer behavior via phone grouping
+
+---
+
+Does this revised scrum work better for you? The system is now more straightforward while still achieving all the core goals.
