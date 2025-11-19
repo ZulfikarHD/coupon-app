@@ -6,7 +6,6 @@ use App\Jobs\GenerateCouponCode;
 use App\Models\Coupon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -80,12 +79,8 @@ class CouponController extends Controller
             'expires_at' => ['nullable', 'date'],
         ]);
 
-        // Dispatch job to create coupon (or create directly for synchronous processing)
-        // For now, creating directly since queue might not be configured
-        $code = $this->generateCouponCode();
-
-        $coupon = Coupon::create([
-            'code' => $code,
+        // Use Job to create coupon synchronously (dispatchSync for immediate execution)
+        $coupon = GenerateCouponCode::dispatchSync([
             'type' => $validated['type'],
             'description' => $validated['description'],
             'customer_name' => $validated['customer_name'],
@@ -96,20 +91,6 @@ class CouponController extends Controller
             'status' => Coupon::STATUS_ACTIVE,
             'created_by' => Auth::id(),
         ]);
-
-        // Alternative: Use Job for async processing (uncomment if queue is configured)
-        // GenerateCouponCode::dispatch([
-        //     'type' => $validated['type'],
-        //     'description' => $validated['description'],
-        //     'customer_name' => $validated['customer_name'],
-        //     'customer_phone' => $validated['customer_phone'],
-        //     'customer_email' => $validated['customer_email'] ?? null,
-        //     'customer_social_media' => $validated['customer_social_media'] ?? null,
-        //     'expires_at' => $validated['expires_at'] ?? null,
-        //     'status' => Coupon::STATUS_ACTIVE,
-        //     'created_by' => Auth::id(),
-        // ]);
-        // return redirect()->route('coupons.index')->with('success', 'Kupon sedang dibuat...');
 
         return redirect()
             ->route('coupons.show', $coupon->id)
@@ -149,21 +130,5 @@ class CouponController extends Controller
         return redirect()
             ->route('coupons.index')
             ->with('success', 'Kupon berhasil dihapus!');
-    }
-
-    /**
-     * Generate a unique coupon code in format ABC-1234-XYZ
-     */
-    private function generateCouponCode(): string
-    {
-        do {
-            // Format: ABC-1234-XYZ
-            $part1 = strtoupper(Str::random(3)); // ABC
-            $part2 = str_pad((string) rand(0, 9999), 4, '0', STR_PAD_LEFT); // 1234
-            $part3 = strtoupper(Str::random(3)); // XYZ
-            $code = "{$part1}-{$part2}-{$part3}";
-        } while (Coupon::where('code', $code)->exists());
-
-        return $code;
     }
 }

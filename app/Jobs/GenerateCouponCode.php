@@ -27,11 +27,11 @@ class GenerateCouponCode implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(): void
+    public function handle(): Coupon
     {
         $code = $this->generateUniqueCode();
 
-        Coupon::create([
+        return Coupon::create([
             'code' => $code,
             'type' => $this->couponData['type'],
             'description' => $this->couponData['description'],
