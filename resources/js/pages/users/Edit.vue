@@ -5,8 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
-import { User, Mail, Lock, Shield } from 'lucide-vue-next';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { User, Mail, Lock, Shield, ChevronDown } from 'lucide-vue-next';
 import InputError from '@/components/InputError.vue';
 
 interface User {
@@ -165,17 +170,32 @@ const breadcrumbs = [
                                     Role
                                 </div>
                             </Label>
-                            <Select v-model="form.role">
-                                <SelectTrigger
-                                    :class="{ 'border-destructive': form.errors.role }"
-                                >
-                                    <SelectValue placeholder="Pilih role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="user">User</SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger as-child>
+                                    <Button
+                                        variant="outline"
+                                        class="w-full justify-between"
+                                        :class="{ 'border-destructive': form.errors.role }"
+                                    >
+                                        {{ form.role === 'admin' ? 'Admin' : 'User' }}
+                                        <ChevronDown class="ml-2 h-4 w-4 opacity-50" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent class="w-full">
+                                    <DropdownMenuItem
+                                        @click="form.role = 'user'"
+                                        :class="{ 'bg-accent': form.role === 'user' }"
+                                    >
+                                        User
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        @click="form.role = 'admin'"
+                                        :class="{ 'bg-accent': form.role === 'admin' }"
+                                    >
+                                        Admin
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             <InputError :message="form.errors.role" />
                         </div>
 

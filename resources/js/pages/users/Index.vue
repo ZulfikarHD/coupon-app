@@ -5,8 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
-import { Plus, Search, Edit, Trash2, User as UserIcon, Shield, Users } from 'lucide-vue-next';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Plus, Search, Edit, Trash2, User as UserIcon, Shield, Users, ChevronDown } from 'lucide-vue-next';
 import { ref } from 'vue';
 import {
     Dialog,
@@ -130,16 +135,38 @@ const breadcrumbs = [
                             </div>
                         </div>
                         <div class="w-full sm:w-48">
-                            <Select v-model="form.role" @update:model-value="applyFilters">
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Semua Role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Semua Role</SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                    <SelectItem value="user">User</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger as-child>
+                                    <Button
+                                        variant="outline"
+                                        class="w-full justify-between"
+                                        :class="{ 'border-destructive': form.errors.role }"
+                                    >
+                                        {{ form.role === 'all' ? 'Semua Role' : form.role === 'admin' ? 'Admin' : 'User' }}
+                                        <ChevronDown class="ml-2 h-4 w-4 opacity-50" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent class="w-full">
+                                    <DropdownMenuItem
+                                        @click="form.role = 'all'; applyFilters()"
+                                        :class="{ 'bg-accent': form.role === 'all' }"
+                                    >
+                                        Semua Role
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        @click="form.role = 'admin'; applyFilters()"
+                                        :class="{ 'bg-accent': form.role === 'admin' }"
+                                    >
+                                        Admin
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        @click="form.role = 'user'; applyFilters()"
+                                        :class="{ 'bg-accent': form.role === 'user' }"
+                                    >
+                                        User
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                         <div class="flex gap-2">
                             <Button type="submit" :disabled="form.processing">
