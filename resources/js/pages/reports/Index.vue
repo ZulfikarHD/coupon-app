@@ -27,6 +27,7 @@ import {
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { type BreadcrumbItem } from '@/types';
+import CustomerCouponsModal from '@/components/CustomerCouponsModal.vue';
 
 interface SummaryStats {
     total_created: number;
@@ -360,12 +361,15 @@ const exportToCSV = () => {
     }, 2000);
 };
 
-const viewCustomerCoupons = (phone: string) => {
-    router.get('/coupons', {
-        customer_phone: phone,
-        preserveState: true,
-        preserveScroll: true,
-    });
+const showCouponsModal = ref(false);
+const selectedCustomer = ref<{ name: string; phone: string } | null>(null);
+
+const viewCustomerCoupons = (customer: FrequentCustomer) => {
+    selectedCustomer.value = {
+        name: customer.customer_name,
+        phone: customer.customer_phone,
+    };
+    showCouponsModal.value = true;
 };
 </script>
 
@@ -762,7 +766,7 @@ const viewCustomerCoupons = (phone: string) => {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            @click="viewCustomerCoupons(customer.customer_phone)"
+                                            @click="viewCustomerCoupons(customer)"
                                             class="gap-2 rounded-xl"
                                         >
                                             <Eye class="h-4 w-4" />
@@ -848,5 +852,14 @@ const viewCustomerCoupons = (phone: string) => {
                 </CardContent>
             </Card>
         </div>
+
+        <!-- Customer Coupons Modal -->
+        <CustomerCouponsModal
+            v-if="selectedCustomer"
+            :is-open="showCouponsModal"
+            :customer-name="selectedCustomer.name"
+            :customer-phone="selectedCustomer.phone"
+            @update:is-open="showCouponsModal = $event"
+        />
     </AppLayout>
 </template>

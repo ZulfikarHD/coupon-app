@@ -50,6 +50,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Called by scanner page - needs session middleware
     Route::get('/api/coupons/{code}/check', [CouponController::class, 'check'])->name('api.coupons.check');
     
+    // API endpoint for fetching coupons (JSON response)
+    Route::get('/api/coupons', [CouponController::class, 'apiIndex'])->name('api.coupons.index');
+    
     // Validation route (web route for CSRF protection)
     Route::post('/coupons/{code}/validate', [CouponController::class, 'validate'])->name('coupons.validate');
     
