@@ -20,10 +20,9 @@ import {
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { ScanLine, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Loader2 } from 'lucide-vue-next';
-import { onMounted, onUnmounted, ref, watch, onBeforeUnmount } from 'vue';
+import { onMounted, onUnmounted, ref, watch, onBeforeUnmount, nextTick } from 'vue';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useSweetAlert } from '@/composables/useSweetAlert';
-import { router } from '@inertiajs/vue3';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -47,12 +46,14 @@ interface CouponData {
 
 const swal = useSweetAlert();
 const scannerId = 'qr-reader';
+const scannerElement = ref<HTMLElement | null>(null);
 const html5QrCode = ref<Html5Qrcode | null>(null);
 const isScanning = ref(false);
 const scanningStatus = ref<string>('');
 const showManualInput = ref(false);
 const manualCode = ref('');
 const isSubmittingManual = ref(false);
+const isNavigating = ref(false);
 
 // Modal state
 const showValidationModal = ref(false);
@@ -77,8 +78,19 @@ watch(errorMessage, (message) => {
 
 const startScanner = async () => {
     try {
-        if (html5QrCode.value) {
-            return; // Already started
+        // Don't start if already scanning, navigating, or element doesn't exist
+        if (html5QrCode.value || isNavigating.value) {
+            return; // Already started or navigating away
+        }
+
+        // Wait for DOM to be ready
+        await nextTick();
+        
+        // Ensure the scanner element exists
+        const element = scannerElement.value || document.getElementById(scannerId);
+        if (!element) {
+            console.warn('Scanner element not found');
+            return;
         }
 
         scanningStatus.value = 'Meminta izin kamera...';
@@ -94,7 +106,9 @@ const startScanner = async () => {
                 aspectRatio: 1.0,
             },
             (decodedText) => {
-                handleScannedCode(decodedText);
+                if (!isNavigating.value) {
+                    handleScannedCode(decodedText);
+                }
             },
             (errorMessage) => {
                 // Ignore scanning errors, just keep scanning
@@ -117,27 +131,47 @@ const startScanner = async () => {
         } else {
             scanningStatus.value = 'Gagal mengakses kamera. Silakan gunakan input manual.';
         }
+        
+        // Clean up on error
+        if (html5QrCode.value) {
+            html5QrCode.value = null;
+        }
     }
 };
 
-const stopScanner = async () => {
+const stopScanner = async (isNavigation = false) => {
     if (html5QrCode.value) {
         try {
+            // Mark as navigating only if this is a navigation stop
+            if (isNavigation) {
+                isNavigating.value = true;
+            }
+            
+            // Stop the scanner
             await html5QrCode.value.stop().catch(() => {
                 // Ignore stop errors (might already be stopped)
             });
+            
+            // Clear the scanner - this removes DOM elements
             await html5QrCode.value.clear().catch(() => {
                 // Ignore clear errors
             });
+            
+            // Wait a bit for DOM cleanup to complete
+            await new Promise(resolve => setTimeout(resolve, 50));
         } catch (err) {
             // Ignore any errors when stopping
             console.debug('Scanner cleanup:', err);
         } finally {
+            // Clear the reference
             html5QrCode.value = null;
+            isScanning.value = false;
+            scanningStatus.value = '';
         }
+    } else {
+        isScanning.value = false;
+        scanningStatus.value = '';
     }
-    isScanning.value = false;
-    scanningStatus.value = '';
 };
 
 const extractCodeFromUrl = (url: string): string => {
@@ -195,8 +229,18 @@ const checkCoupon = async (code: string): Promise<{ success: boolean; data?: any
 };
 
 const handleScannedCode = async (decodedText: string) => {
+    // Don't process if navigating
+    if (isNavigating.value) {
+        return;
+    }
+    
     // Stop scanner temporarily
     await stopScanner();
+    
+    // Check again after stopping (in case navigation started)
+    if (isNavigating.value) {
+        return;
+    }
     
     const code = extractCodeFromUrl(decodedText);
     scanningStatus.value = `Kode terdeteksi: ${code}. Memeriksa...`;
@@ -212,9 +256,11 @@ const handleScannedCode = async (decodedText: string) => {
         errorMessage.value = result.error || 'Kupon tidak dapat divalidasi';
         scanningStatus.value = result.error || 'Kupon tidak dapat divalidasi';
         
-        // Restart scanner after 3 seconds
+        // Restart scanner after 3 seconds (only if not navigating)
         setTimeout(() => {
-            startScanner();
+            if (!isNavigating.value) {
+                startScanner();
+            }
         }, 3000);
     }
 };
@@ -290,9 +336,11 @@ const handleValidate = async () => {
                 successMessage.value = '';
             }, 5000);
             
-            // Restart scanner after 3 seconds
+            // Restart scanner after 3 seconds (only if not navigating)
             setTimeout(() => {
-                startScanner();
+                if (!isNavigating.value) {
+                    startScanner();
+                }
             }, 3000);
         } else {
             if (response.status === 401) {
@@ -316,28 +364,38 @@ const handleModalClose = () => {
     errorMessage.value = '';
     couponData.value = null;
     
-    // Restart scanner
-    if (!isScanning.value) {
+    // Restart scanner (only if not navigating)
+    if (!isScanning.value && !isNavigating.value) {
         startScanner();
     }
 };
 
-onMounted(() => {
-    startScanner();
+onMounted(async () => {
+    // Wait for Vue to finish rendering before starting scanner
+    await nextTick();
+    // Add a small delay to ensure DOM is fully ready
+    setTimeout(() => {
+        if (!isNavigating.value) {
+            startScanner();
+        }
+    }, 100);
 });
 
 onBeforeUnmount(() => {
-    stopScanner();
+    // Stop scanner before component unmounts (this is navigation)
+    stopScanner(true);
 });
 
 onUnmounted(() => {
-    stopScanner();
+    // Ensure scanner is stopped (this is navigation)
+    stopScanner(true);
 });
 
 // Stop scanner when navigating away using Inertia events
 if (typeof window !== 'undefined') {
     const stopOnNavigate = () => {
-        stopScanner();
+        isNavigating.value = true;
+        stopScanner(true); // Pass true to indicate this is a navigation stop
     };
     
     // Listen to Inertia navigation events
@@ -345,6 +403,8 @@ if (typeof window !== 'undefined') {
     
     onUnmounted(() => {
         document.removeEventListener('inertia:start', stopOnNavigate);
+        // Ensure scanner is stopped on unmount
+        stopScanner(true);
     });
 }
 </script>
@@ -368,8 +428,9 @@ if (typeof window !== 'undefined') {
                     <!-- Scanner View -->
                     <div class="space-y-4">
                         <div
+                            ref="scannerElement"
                             :id="scannerId"
-                            class="w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800 flex items-center justify-center pointer-events-auto"
+                            class="w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden relative"
                             style="min-height: 400px; aspect-ratio: 1;"
                         >
                             <div v-if="!isScanning" class="text-center space-y-2 p-8">
@@ -509,3 +570,51 @@ if (typeof window !== 'undefined') {
         </Dialog>
     </AppLayout>
 </template>
+
+<style scoped>
+/* Ensure scanner elements are contained and don't block navigation */
+#qr-reader {
+    position: relative;
+    isolation: isolate;
+    contain: layout style paint;
+    overflow: hidden;
+}
+
+/* Contain scanner video and canvas within the container */
+#qr-reader video,
+#qr-reader canvas {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    pointer-events: auto;
+}
+
+/* Prevent any Html5Qrcode overlays from blocking navigation */
+:deep(#qr-reader__dashboard),
+:deep(#qr-reader__camera_selection),
+:deep(#qr-reader__file_selection) {
+    position: absolute !important;
+    z-index: 1 !important;
+    pointer-events: auto;
+}
+
+/* Ensure navigation elements stay on top and are clickable */
+:deep(nav) {
+    position: relative !important;
+    z-index: 1000 !important;
+    pointer-events: auto !important;
+}
+
+/* Ensure links in navigation are clickable */
+:deep(nav a),
+:deep(nav button),
+:deep([role="navigation"] a),
+:deep([role="navigation"] button) {
+    position: relative !important;
+    z-index: 1001 !important;
+    pointer-events: auto !important;
+}
+</style>
