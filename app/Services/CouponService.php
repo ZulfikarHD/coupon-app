@@ -73,34 +73,20 @@ class CouponService
      */
     protected function parseStatusFilter(Request $request): array
     {
-        $statusArray = [];
-        $queryString = $request->getQueryString();
-        
-        if ($queryString) {
-            // Manually extract all status=value pairs from query string
-            preg_match_all('/[?&]status=([^&]*)/', '?' . $queryString, $matches);
-            if (!empty($matches[1])) {
-                $statusArray = array_map(function($value) {
-                    return urldecode(trim($value));
-                }, $matches[1]);
-            }
+        $statusInput = $request->input('status');
+
+        if (!$statusInput) {
+            return [];
         }
-        
-        // Fallback: check request input (might work if Laravel parsed it as array)
-        if (empty($statusArray)) {
-            $statusInput = $request->input('status');
-            if ($statusInput) {
-                $statusArray = is_array($statusInput) ? $statusInput : [$statusInput];
-            }
-        }
-        
+
+        // Convert to array if it's a single value
+        $statusArray = is_array($statusInput) ? $statusInput : [$statusInput];
+
         // Filter out 'all' and empty values
-        if (!empty($statusArray)) {
-            $statusArray = array_filter(array_map('trim', $statusArray), function($s) {
-                return $s !== 'all' && !empty($s);
-            });
-        }
-        
+        $statusArray = array_filter(array_map('trim', $statusArray), function($s) {
+            return $s !== 'all' && !empty($s);
+        });
+
         return array_values($statusArray);
     }
 
@@ -278,15 +264,15 @@ class CouponService
         if ($coupon->status === Coupon::STATUS_USED) {
             return 'Kupon sudah digunakan';
         }
-        
+
         if ($coupon->status === Coupon::STATUS_EXPIRED) {
             return 'Kupon sudah kedaluwarsa';
         }
-        
+
         if ($coupon->expires_at && $coupon->expires_at->isPast()) {
             return 'Kupon sudah kedaluwarsa';
         }
-        
+
         return 'Kupon tidak dapat divalidasi';
     }
 

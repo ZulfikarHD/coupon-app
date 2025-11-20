@@ -102,6 +102,7 @@ const statusOptions = [
 
 const toggleStatus = (status: string, checked: boolean) => {
     const currentStatus = Array.isArray(form.status) ? form.status : [];
+    
     if (checked) {
         // Add status if not already present
         if (!currentStatus.includes(status)) {
@@ -111,6 +112,7 @@ const toggleStatus = (status: string, checked: boolean) => {
         // Remove status if present
         form.status = currentStatus.filter((s) => s !== status);
     }
+    
     applyFilters();
 };
 
@@ -216,10 +218,9 @@ const removeFilter = (key: string) => {
 const buildQueryString = (page?: number): string => {
     const searchParams = new URLSearchParams();
     
-    // Laravel automatically parses multiple status=value parameters as an array
-    // So we use 'status' without brackets
+    // Use array notation for multiple status values so Laravel can parse them properly
     if (Array.isArray(form.status) && form.status.length > 0) {
-        form.status.forEach((s) => searchParams.append('status', s));
+        form.status.forEach((s) => searchParams.append('status[]', s));
     }
     if (form.search) searchParams.set('search', form.search);
     if (form.customer_name) searchParams.set('customer_name', form.customer_name);
@@ -331,16 +332,37 @@ const breadcrumbs = [
                                     <label
                                         v-for="option in statusOptions"
                                         :key="option.value"
-                                        class="flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm transition-all active:scale-[0.98]"
+                                        class="flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm transition-colors hover:scale-[1.02] active:scale-[0.98]"
                                         :class="{
-                                            'bg-primary text-primary-foreground border-primary': Array.isArray(form.status) && form.status.includes(option.value),
-                                            'hover:bg-muted': !(Array.isArray(form.status) && form.status.includes(option.value)),
+                                            'bg-primary text-primary-foreground border-primary shadow-sm': Array.isArray(form.status) && form.status.includes(option.value),
+                                            'hover:bg-muted hover:border-muted-foreground/20': !(Array.isArray(form.status) && form.status.includes(option.value)),
                                         }"
                                     >
-                                        <Checkbox
+                                        <input
+                                            type="checkbox"
+                                            :value="option.value"
                                             :checked="Array.isArray(form.status) && form.status.includes(option.value)"
-                                            @update:checked="(checked) => toggleStatus(option.value, checked)"
+                                            @change="toggleStatus(option.value, ($event.target as HTMLInputElement).checked)"
+                                            class="sr-only peer"
                                         />
+                                        <div
+                                            class="peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:border-primary border-input flex size-4 shrink-0 items-center justify-center rounded-[4px] border shadow-xs transition-colors"
+                                        >
+                                            <svg
+                                                v-if="Array.isArray(form.status) && form.status.includes(option.value)"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="14"
+                                                height="14"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="3"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            >
+                                                <polyline points="20 6 9 17 4 12" />
+                                            </svg>
+                                        </div>
                                         <span>{{ option.label }}</span>
                                     </label>
                                 </div>

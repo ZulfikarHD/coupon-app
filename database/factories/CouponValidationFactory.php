@@ -23,8 +23,8 @@ class CouponValidationFactory extends Factory
             'coupon_id' => Coupon::factory(),
             'validated_by' => User::factory(),
             'validated_at' => now(),
-            'action' => fake()->randomElement(['used', 'reversed']),
-            'notes' => fake()->optional()->sentence(),
+            'action' => $this->faker->randomElement(['used', 'reversed']),
+            'notes' => $this->faker->optional()->sentence(),
         ];
     }
 
@@ -46,7 +46,7 @@ class CouponValidationFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'action' => 'reversed',
-            'notes' => fake()->sentence(),
+            'notes' => $this->faker->sentence(),
         ]);
     }
 }

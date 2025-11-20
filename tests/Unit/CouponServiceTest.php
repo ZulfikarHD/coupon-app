@@ -49,6 +49,61 @@ class CouponServiceTest extends TestCase
         $this->assertEquals(Coupon::STATUS_ACTIVE, $results->first()->status);
     }
 
+    public function test_apply_filters_filters_by_multiple_statuses()
+    {
+        Coupon::factory()->create([
+            'status' => Coupon::STATUS_ACTIVE,
+            'created_by' => $this->user->id,
+        ]);
+        Coupon::factory()->create([
+            'status' => Coupon::STATUS_USED,
+            'created_by' => $this->user->id,
+        ]);
+        Coupon::factory()->create([
+            'status' => Coupon::STATUS_EXPIRED,
+            'created_by' => $this->user->id,
+        ]);
+
+        $request = Request::create('/coupons', 'GET', ['status' => ['active', 'used']]);
+        $query = Coupon::query();
+        
+        $this->couponService->applyFilters($query, $request);
+        
+        $results = $query->get();
+        $this->assertCount(2, $results);
+        $this->assertTrue($results->contains('status', Coupon::STATUS_ACTIVE));
+        $this->assertTrue($results->contains('status', Coupon::STATUS_USED));
+        $this->assertFalse($results->contains('status', Coupon::STATUS_EXPIRED));
+    }
+
+    public function test_apply_filters_filters_by_multiple_statuses_from_query_string()
+    {
+        Coupon::factory()->create([
+            'status' => Coupon::STATUS_ACTIVE,
+            'created_by' => $this->user->id,
+        ]);
+        Coupon::factory()->create([
+            'status' => Coupon::STATUS_USED,
+            'created_by' => $this->user->id,
+        ]);
+        Coupon::factory()->create([
+            'status' => Coupon::STATUS_EXPIRED,
+            'created_by' => $this->user->id,
+        ]);
+
+        // Simulate the query string format sent from the frontend using array notation
+        $request = Request::create('/coupons?status[]=active&status[]=used', 'GET');
+        $query = Coupon::query();
+        
+        $this->couponService->applyFilters($query, $request);
+        
+        $results = $query->get();
+        $this->assertCount(2, $results);
+        $this->assertTrue($results->contains('status', Coupon::STATUS_ACTIVE));
+        $this->assertTrue($results->contains('status', Coupon::STATUS_USED));
+        $this->assertFalse($results->contains('status', Coupon::STATUS_EXPIRED));
+    }
+
     public function test_apply_filters_filters_by_search_term()
     {
         Coupon::factory()->create([
