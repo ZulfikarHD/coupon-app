@@ -198,8 +198,10 @@ const removeFilter = (key: string) => {
 const buildQueryString = (page?: number): string => {
     const searchParams = new URLSearchParams();
     
+    // Laravel automatically parses multiple status=value parameters as an array
+    // So we use 'status' without brackets
     if (Array.isArray(form.status) && form.status.length > 0) {
-        form.status.forEach((s) => searchParams.append('status[]', s));
+        form.status.forEach((s) => searchParams.append('status', s));
     }
     if (form.search) searchParams.set('search', form.search);
     if (form.customer_name) searchParams.set('customer_name', form.customer_name);

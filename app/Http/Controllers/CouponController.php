@@ -22,20 +22,38 @@ class CouponController extends Controller
             ->orderBy('created_at', 'desc');
 
         // Status filter (can be array for multi-select)
-        // Frontend sends status[]=active&status[]=used format
-        $status = $request->input('status');
+        // Frontend sends multiple status=active&status=used parameters
+        // Manually parse query string to get all status values (parse_str overwrites duplicates)
+        $statusArray = [];
+        $queryString = $request->getQueryString();
         
-        if ($status) {
-            // Convert to array if it's a single value
-            if (!is_array($status)) {
-                $status = [$status];
+        if ($queryString) {
+            // Manually extract all status=value pairs from query string
+            // Handle both status=value&other=param and status=value (at end)
+            preg_match_all('/[?&]status=([^&]*)/', '?' . $queryString, $matches);
+            if (!empty($matches[1])) {
+                $statusArray = array_map(function($value) {
+                    return urldecode(trim($value));
+                }, $matches[1]);
             }
-            // Filter out 'all' and empty values
-            $status = array_filter($status, function($s) {
+        }
+        
+        // Fallback: check request input (might work if Laravel parsed it as array)
+        if (empty($statusArray)) {
+            $statusInput = $request->input('status');
+            if ($statusInput) {
+                $statusArray = is_array($statusInput) ? $statusInput : [$statusInput];
+            }
+        }
+        
+        if (!empty($statusArray)) {
+            // Filter out 'all' and empty values, and trim whitespace
+            $statusArray = array_filter(array_map('trim', $statusArray), function($s) {
                 return $s !== 'all' && !empty($s);
             });
-            if (count($status) > 0) {
-                $query->whereIn('status', array_values($status));
+            
+            if (count($statusArray) > 0) {
+                $query->whereIn('status', array_values($statusArray));
             }
         }
 
