@@ -18,7 +18,9 @@ Route::get('dashboard', [DashboardController::class, 'index'])
 
 // Public coupon view (no auth required)
 Route::get('/coupon/{code}', function ($code) {
-    $coupon = \App\Models\Coupon::where('code', $code)->firstOrFail();
+    $coupon = \App\Models\Coupon::with(['validations' => function ($query) {
+        $query->where('action', 'used')->latest('validated_at')->limit(1);
+    }])->where('code', $code)->firstOrFail();
     return Inertia::render('coupons/Public', [
         'coupon' => $coupon,
     ]);
@@ -27,7 +29,7 @@ Route::get('/coupon/{code}', function ($code) {
 // Coupon routes (protected)
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('coupons', CouponController::class);
-    
+
     // Scan route (placeholder - will be implemented in User Story 2.3)
     Route::get('/scan', function () {
         return Inertia::render('scan/Index');

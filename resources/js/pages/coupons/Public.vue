@@ -3,7 +3,7 @@ import { Head } from '@inertiajs/vue3';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { QrCode, CheckCircle2, XCircle, Clock, Sparkles, Gift, Star } from 'lucide-vue-next';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import QRCode from 'qrcode';
 
 interface Coupon {
@@ -15,6 +15,11 @@ interface Coupon {
     status: 'active' | 'used' | 'expired';
     expires_at: string | null;
     created_at: string;
+    validations?: Array<{
+        id: number;
+        validated_at: string;
+        action: string;
+    }>;
 }
 
 interface Props {
@@ -25,6 +30,23 @@ const props = defineProps<Props>();
 
 const qrCodeDataUrl = ref('');
 const publicUrl = window.location.href;
+
+// Get validated_at from the first 'used' validation
+const validatedAt = computed(() => {
+    if (props.coupon.status === 'used' && props.coupon.validations && props.coupon.validations.length > 0) {
+        const usedValidation = props.coupon.validations.find(v => v.action === 'used');
+        return usedValidation?.validated_at || null;
+    }
+    return null;
+});
+
+// Open Graph meta tags
+const ogTitle = computed(() => `Kupon ${props.coupon.code} - ${props.coupon.type}`);
+const ogDescription = computed(() => props.coupon.description);
+const ogImage = computed(() => {
+    // Use QR code as OG image if available, otherwise use a default
+    return qrCodeDataUrl.value || `${publicUrl.split('/coupon/')[0]}/favicon.svg`;
+});
 
 const statusColors = {
     active: 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-700 dark:text-green-300 border-green-400/30 shadow-green-500/10',
@@ -62,7 +84,23 @@ onMounted(async () => {
 </script>
 
 <template>
-    <Head :title="`Kupon ${coupon.code}`" />
+    <Head>
+        <title>{{ `Kupon ${coupon.code}` }}</title>
+        <!-- Open Graph / Facebook / WhatsApp -->
+        <meta property="og:type" content="website" />
+        <meta property="og:url" :content="publicUrl" />
+        <meta property="og:title" :content="ogTitle" />
+        <meta property="og:description" :content="ogDescription" />
+        <meta property="og:image" :content="ogImage" />
+        <meta property="og:site_name" content="Coupon System" />
+
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" :content="publicUrl" />
+        <meta name="twitter:title" :content="ogTitle" />
+        <meta name="twitter:description" :content="ogDescription" />
+        <meta name="twitter:image" :content="ogImage" />
+    </Head>
 
     <div class="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <!-- Decorative background elements -->
@@ -118,11 +156,11 @@ onMounted(async () => {
                     <div class="flex flex-col items-center space-y-6">
                         <div class="relative">
                             <!-- Animated ring around QR code -->
-                            <div 
+                            <div
                                 v-if="coupon.status === 'active'"
                                 class="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary via-accent to-primary animate-pulse opacity-20 blur-xl"
                             ></div>
-                            
+
                             <div
                                 v-if="qrCodeDataUrl"
                                 class="relative rounded-2xl border-4 border-dashed border-primary/30 p-6 bg-white dark:bg-gray-900 shadow-xl transition-all hover:scale-105 hover:shadow-2xl"
@@ -141,7 +179,7 @@ onMounted(async () => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Coupon Code with decorative styling -->
                         <div class="w-full text-center space-y-2">
                             <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -190,7 +228,7 @@ onMounted(async () => {
                     </div>
 
                     <!-- Status Info for used coupons -->
-                    <div v-if="coupon.status === 'used'" class="border-t border-border/50 pt-6">
+                    <div v-if="coupon.status === 'used' && validatedAt" class="border-t border-border/50 pt-6">
                         <div class="flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-muted/30">
                             <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-500/10">
                                 <CheckCircle2 class="h-5 w-5 text-gray-600 dark:text-gray-400" />
@@ -198,10 +236,12 @@ onMounted(async () => {
                             <div class="text-left">
                                 <p class="text-xs font-medium text-muted-foreground">Digunakan pada</p>
                                 <p class="text-sm font-semibold text-foreground">
-                                    {{ new Date(coupon.created_at).toLocaleDateString('id-ID', {
+                                    {{ new Date(validatedAt).toLocaleDateString('id-ID', {
                                         year: 'numeric',
                                         month: 'long',
                                         day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
                                     }) }}
                                 </p>
                             </div>
