@@ -27,6 +27,8 @@ import {
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { type BreadcrumbItem } from '@/types';
+import CustomerCouponsModal from '@/components/CustomerCouponsModal.vue';
+import DailyUsageChart from '@/components/DailyUsageChart.vue';
 
 interface SummaryStats {
     total_created: number;
@@ -360,12 +362,15 @@ const exportToCSV = () => {
     }, 2000);
 };
 
-const viewCustomerCoupons = (phone: string) => {
-    router.get('/coupons', {
-        customer_phone: phone,
-        preserveState: true,
-        preserveScroll: true,
-    });
+const showCouponsModal = ref(false);
+const selectedCustomer = ref<{ name: string; phone: string } | null>(null);
+
+const viewCustomerCoupons = (customer: FrequentCustomer) => {
+    selectedCustomer.value = {
+        name: customer.customer_name,
+        phone: customer.customer_phone,
+    };
+    showCouponsModal.value = true;
 };
 </script>
 
@@ -402,6 +407,7 @@ const viewCustomerCoupons = (phone: string) => {
                                     type="date"
                                     :disabled="isLoading"
                                     class="w-full rounded-xl"
+                                    @change="form.top_types_page = 1; form.customers_page = 1; applyFilters()"
                                 />
                             </div>
                             <div class="flex-1 space-y-2">
@@ -411,19 +417,11 @@ const viewCustomerCoupons = (phone: string) => {
                                     v-model="form.date_to"
                                     type="date"
                                     :disabled="isLoading"
-                                    class="w-full"
+                                    class="w-full rounded-xl"
+                                    @change="form.top_types_page = 1; form.customers_page = 1; applyFilters()"
                                 />
                             </div>
                             <div class="flex gap-2">
-                                <Button
-                                    type="submit"
-                                    :disabled="isLoading"
-                                    class="gap-2 rounded-xl"
-                                >
-                                    <Loader2 v-if="isLoading" class="h-4 w-4 animate-spin" />
-                                    <BarChart3 v-else class="h-4 w-4" />
-                                    {{ isLoading ? 'Memuat...' : 'Terapkan' }}
-                                </Button>
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -434,6 +432,10 @@ const viewCustomerCoupons = (phone: string) => {
                                     Reset
                                 </Button>
                             </div>
+                        </div>
+                        <div v-if="isLoading" class="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 class="h-4 w-4 animate-spin" />
+                            <span>Memuat data...</span>
                         </div>
                     </form>
                 </CardContent>
@@ -762,7 +764,7 @@ const viewCustomerCoupons = (phone: string) => {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            @click="viewCustomerCoupons(customer.customer_phone)"
+                                            @click="viewCustomerCoupons(customer)"
                                             class="gap-2 rounded-xl"
                                         >
                                             <Eye class="h-4 w-4" />
@@ -836,17 +838,24 @@ const viewCustomerCoupons = (phone: string) => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div class="py-8 text-center">
-                        <BarChart3 class="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <p class="text-sm text-muted-foreground">
-                            Grafik akan ditampilkan di sini (opsional untuk implementasi masa depan)
-                        </p>
-                        <p class="text-xs text-muted-foreground mt-2">
-                            Data tersedia: {{ dailyUsage.length }} hari
-                        </p>
-                    </div>
+                    <EmptyState
+                        v-if="dailyUsage.length === 0"
+                        :icon="BarChart3"
+                        title="Tidak ada data"
+                        description="Tidak ada data validasi kupon dalam periode yang dipilih"
+                    />
+                    <DailyUsageChart v-else :data="dailyUsage" />
                 </CardContent>
             </Card>
         </div>
+
+        <!-- Customer Coupons Modal -->
+        <CustomerCouponsModal
+            v-if="selectedCustomer"
+            :is-open="showCouponsModal"
+            :customer-name="selectedCustomer.name"
+            :customer-phone="selectedCustomer.phone"
+            @update:is-open="showCouponsModal = $event"
+        />
     </AppLayout>
 </template>

@@ -162,6 +162,45 @@ class CouponController extends Controller
     }
 
     /**
+     * Get coupons for API (JSON response)
+     */
+    public function apiIndex(Request $request)
+    {
+        $query = Coupon::with('user');
+
+        // Apply filters using service
+        $this->couponService->applyFilters($query, $request);
+
+        // Apply sorting
+        $sortColumn = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        
+        // Validate sort column to prevent SQL injection
+        $allowedColumns = ['code', 'customer_name', 'customer_phone', 'type', 'status', 'created_at', 'expires_at'];
+        if (!in_array($sortColumn, $allowedColumns)) {
+            $sortColumn = 'created_at';
+        }
+        
+        // Validate sort direction
+        $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+        
+        $query->orderBy($sortColumn, $sortDirection);
+
+        $perPage = min((int) $request->get('per_page', 20), 100); // Max 100 items
+        $coupons = $query->paginate($perPage);
+
+        // Append formatted_phone to each coupon
+        $coupons->getCollection()->transform(function ($coupon) {
+            $coupon->formatted_phone = $coupon->formatted_phone;
+            return $coupon;
+        });
+
+        return response()->json([
+            'coupons' => $coupons,
+        ]);
+    }
+
+    /**
      * Reverse (cancel) a coupon validation
      */
     public function reverse(Request $request, string $id)

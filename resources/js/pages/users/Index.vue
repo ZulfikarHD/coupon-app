@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Plus, Search, Edit, Trash2, User as UserIcon, Shield, Users, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { ref, computed } from 'vue';
+import EditUserModal from '@/components/EditUserModal.vue';
 import {
     Dialog,
     DialogClose,
@@ -154,6 +155,14 @@ const breadcrumbs = [
         href: '/users',
     },
 ];
+
+const showEditModal = ref(false);
+const selectedUser = ref<User | null>(null);
+
+const openEditModal = (user: User) => {
+    selectedUser.value = user;
+    showEditModal.value = true;
+};
 </script>
 
 <template>
@@ -352,14 +361,12 @@ const breadcrumbs = [
                                     <td class="px-4 py-3">
                                         <div class="flex items-center justify-end gap-2">
                                             <Button
-                                                as-child
                                                 variant="ghost"
                                                 size="sm"
                                                 class="rounded-xl"
+                                                @click="openEditModal(user)"
                                             >
-                                                <Link :href="`/users/${user.id}/edit`">
-                                                    <Edit class="h-4 w-4" />
-                                                </Link>
+                                                <Edit class="h-4 w-4" />
                                             </Button>
                                             <Dialog>
                                                 <DialogTrigger as-child>
@@ -453,5 +460,13 @@ const breadcrumbs = [
                 </CardContent>
             </Card>
         </div>
+
+        <!-- Edit User Modal -->
+        <EditUserModal
+            v-if="selectedUser"
+            :is-open="showEditModal"
+            :user="selectedUser"
+            @update:is-open="showEditModal = $event"
+        />
     </AppLayout>
 </template>
