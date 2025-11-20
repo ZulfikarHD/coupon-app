@@ -26,6 +26,8 @@ class Coupon extends Model
         'type',
         'description',
         'customer_name',
+        'first_name',
+        'last_name',
         'customer_phone',
         'customer_email',
         'customer_social_media',

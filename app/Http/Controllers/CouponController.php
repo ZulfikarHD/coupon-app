@@ -28,16 +28,16 @@ class CouponController extends Controller
         // Apply sorting
         $sortColumn = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
-        
+
         // Validate sort column to prevent SQL injection
         $allowedColumns = ['code', 'customer_name', 'customer_phone', 'type', 'status', 'created_at', 'expires_at'];
         if (!in_array($sortColumn, $allowedColumns)) {
             $sortColumn = 'created_at';
         }
-        
+
         // Validate sort direction
         $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
-        
+
         $query->orderBy($sortColumn, $sortDirection);
 
         $coupons = $query->paginate(20)->withQueryString();
@@ -54,6 +54,8 @@ class CouponController extends Controller
                 'status',
                 'search',
                 'customer_name',
+                'first_name',
+                'last_name',
                 'customer_phone',
                 'coupon_type',
                 'date_from',
@@ -82,7 +84,18 @@ class CouponController extends Controller
         $validated = $request->validate([
             'type' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
-            'customer_name' => ['required', 'string', 'max:255'],
+            'first_name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\s]+$/',
+                function ($attribute, $value, $fail) {
+                    if (\App\Models\BlacklistedName::isBlacklisted($value)) {
+                        $fail('Nama depan yang dimasukkan tidak diperbolehkan.');
+                    }
+                },
+            ],
+            'last_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
             'customer_phone' => ['required', 'string'],
             'customer_email' => ['nullable', 'email', 'max:255'],
             'customer_social_media' => ['nullable', 'string', 'max:255'],
@@ -174,16 +187,16 @@ class CouponController extends Controller
         // Apply sorting
         $sortColumn = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
-        
+
         // Validate sort column to prevent SQL injection
         $allowedColumns = ['code', 'customer_name', 'customer_phone', 'type', 'status', 'created_at', 'expires_at'];
         if (!in_array($sortColumn, $allowedColumns)) {
             $sortColumn = 'created_at';
         }
-        
+
         // Validate sort direction
         $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
-        
+
         $query->orderBy($sortColumn, $sortDirection);
 
         $perPage = min((int) $request->get('per_page', 20), 100); // Max 100 items

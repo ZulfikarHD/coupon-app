@@ -36,6 +36,8 @@ class GenerateCouponCode implements ShouldQueue
             'type' => $this->couponData['type'],
             'description' => $this->couponData['description'],
             'customer_name' => $this->couponData['customer_name'],
+            'first_name' => $this->couponData['first_name'] ?? null,
+            'last_name' => $this->couponData['last_name'] ?? null,
             'customer_phone' => $this->couponData['customer_phone'],
             'customer_email' => $this->couponData['customer_email'] ?? null,
             'customer_social_media' => $this->couponData['customer_social_media'] ?? null,

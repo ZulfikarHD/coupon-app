@@ -24,7 +24,7 @@ class CouponTest extends TestCase
         $response = $this->actingAs($this->user)->get('/coupons');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => 
+        $response->assertInertia(fn ($page) =>
             $page->component('coupons/Index')
         );
     }
@@ -34,7 +34,7 @@ class CouponTest extends TestCase
         $response = $this->actingAs($this->user)->get('/coupons/create');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => 
+        $response->assertInertia(fn ($page) =>
             $page->component('coupons/Create')
         );
     }
@@ -44,7 +44,8 @@ class CouponTest extends TestCase
         $response = $this->actingAs($this->user)->post('/coupons', [
             'type' => 'Gratis 1 Kopi',
             'description' => 'Dapatkan 1 kopi gratis',
-            'customer_name' => 'John Doe',
+            'first_name' => 'John',
+            'last_name' => 'Doe',
             'customer_phone' => '081234567890',
             'customer_email' => 'john@example.com',
             'customer_social_media' => '@johndoe',
@@ -52,10 +53,11 @@ class CouponTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('coupons', [
-            'customer_name' => 'John Doe',
+            'first_name' => 'John',
+            'last_name' => 'Doe',
             'type' => 'Gratis 1 Kopi',
         ]);
-        
+
         $response->assertRedirect();
         $response->assertSessionHas('success');
     }
@@ -64,7 +66,7 @@ class CouponTest extends TestCase
     {
         $response = $this->actingAs($this->user)->post('/coupons', []);
 
-        $response->assertSessionHasErrors(['type', 'description', 'customer_name', 'customer_phone']);
+        $response->assertSessionHasErrors(['type', 'description', 'first_name', 'last_name', 'customer_phone']);
     }
 
     public function test_coupon_creation_normalizes_phone_number()
@@ -79,6 +81,70 @@ class CouponTest extends TestCase
         $this->assertEquals('6281234567890', $coupon->customer_phone);
     }
 
+    public function test_coupon_creation_rejects_non_alphabetic_first_name()
+    {
+        $response = $this->actingAs($this->user)->post('/coupons', [
+            'type' => 'Gratis 1 Kopi',
+            'description' => 'Dapatkan 1 kopi gratis',
+            'first_name' => 'John123',  // Contains numbers
+            'last_name' => 'Doe',
+            'customer_phone' => '081234567890',
+        ]);
+
+        $response->assertSessionHasErrors(['first_name']);
+    }
+
+    public function test_coupon_creation_rejects_non_alphabetic_last_name()
+    {
+        $response = $this->actingAs($this->user)->post('/coupons', [
+            'type' => 'Gratis 1 Kopi',
+            'description' => 'Dapatkan 1 kopi gratis',
+            'first_name' => 'John',
+            'last_name' => 'Doe!@#',  // Contains special characters
+            'customer_phone' => '081234567890',
+        ]);
+
+        $response->assertSessionHasErrors(['last_name']);
+    }
+
+    public function test_coupon_creation_rejects_blacklisted_first_name()
+    {
+        // Create a blacklisted name
+        \App\Models\BlacklistedName::create([
+            'name' => 'admin',
+            'reason' => 'Reserved system name',
+        ]);
+
+        $response = $this->actingAs($this->user)->post('/coupons', [
+            'type' => 'Gratis 1 Kopi',
+            'description' => 'Dapatkan 1 kopi gratis',
+            'first_name' => 'admin',  // Blacklisted
+            'last_name' => 'User',
+            'customer_phone' => '081234567890',
+        ]);
+
+        $response->assertSessionHasErrors(['first_name']);
+    }
+
+    public function test_coupon_creation_accepts_valid_names()
+    {
+        $response = $this->actingAs($this->user)->post('/coupons', [
+            'type' => 'Gratis 1 Kopi',
+            'description' => 'Dapatkan 1 kopi gratis',
+            'first_name' => 'John',
+            'last_name' => 'Doe Smith',  // Multiple words allowed
+            'customer_phone' => '081234567890',
+        ]);
+
+        $this->assertDatabaseHas('coupons', [
+            'first_name' => 'John',
+            'last_name' => 'Doe Smith',
+            'customer_name' => 'John Doe Smith',
+        ]);
+
+        $response->assertRedirect();
+    }
+
     public function test_coupon_show_page_can_be_rendered()
     {
         $coupon = Coupon::factory()->create([
@@ -88,12 +154,13 @@ class CouponTest extends TestCase
         $response = $this->actingAs($this->user)->get("/coupons/{$coupon->id}");
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => 
+        $response->assertInertia(fn ($page) =>
             $page->component('coupons/Show')
-                ->has('coupon', fn ($coupon) => 
+                ->has('coupon', fn ($coupon) =>
                     $coupon->has('id')
                         ->has('code')
                         ->has('type')
+                        ->etc()
                 )
         );
     }
@@ -124,7 +191,7 @@ class CouponTest extends TestCase
         $response = $this->actingAs($this->user)->get('/coupons?status=active');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => 
+        $response->assertInertia(fn ($page) =>
             $page->component('coupons/Index')
                 ->has('coupons.data', 1)
                 ->where('coupons.data.0.status', 'active')
@@ -141,7 +208,7 @@ class CouponTest extends TestCase
         $response = $this->actingAs($this->user)->get('/coupons?search=ABC-1234');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => 
+        $response->assertInertia(fn ($page) =>
             $page->component('coupons/Index')
                 ->has('coupons.data', 1)
                 ->where('coupons.data.0.id', $coupon->id)
@@ -158,7 +225,7 @@ class CouponTest extends TestCase
         $response = $this->actingAs($this->user)->get('/coupons?search=John');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => 
+        $response->assertInertia(fn ($page) =>
             $page->component('coupons/Index')
                 ->has('coupons.data', 1)
                 ->where('coupons.data.0.id', $coupon->id)
@@ -175,11 +242,12 @@ class CouponTest extends TestCase
         $response = $this->get("/coupon/{$coupon->code}");
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => 
+        $response->assertInertia(fn ($page) =>
             $page->component('coupons/Public')
-                ->has('coupon', fn ($coupon) => 
+                ->has('coupon', fn ($coupon) =>
                     $coupon->has('code')
                         ->has('type')
+                        ->etc()
                 )
         );
     }
@@ -200,7 +268,7 @@ class CouponTest extends TestCase
         $response = $this->actingAs($this->user)->get('/coupons');
 
         $response->assertStatus(200);
-        $response->assertInertia(fn ($page) => 
+        $response->assertInertia(fn ($page) =>
             $page->component('coupons/Index')
                 ->where('coupons.per_page', 20)
                 ->where('coupons.total', 25)
@@ -325,7 +393,7 @@ class CouponTest extends TestCase
 
         $coupon->refresh();
         $this->assertEquals(Coupon::STATUS_USED, $coupon->status);
-        
+
         $this->assertDatabaseHas('coupon_validations', [
             'coupon_id' => $coupon->id,
             'action' => 'used',
@@ -425,7 +493,7 @@ class CouponTest extends TestCase
 
         $coupon->refresh();
         $this->assertEquals(Coupon::STATUS_ACTIVE, $coupon->status);
-        
+
         $this->assertDatabaseHas('coupon_validations', [
             'coupon_id' => $coupon->id,
             'action' => 'reversed',

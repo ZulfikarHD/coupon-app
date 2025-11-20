@@ -33,7 +33,8 @@ const getTwoMonthsFromNow = (): string => {
 const form = useForm({
     type: '',
     description: '',
-    customer_name: '',
+    first_name: '',
+    last_name: '',
     customer_phone: '',
     customer_email: '',
     customer_social_media: '',
@@ -101,18 +102,39 @@ const breadcrumbs = [
                     </CardHeader>
                     <CardContent class="space-y-4 sm:space-y-6">
                         <div class="space-y-2">
-                            <Label for="customer_name" class="text-sm font-medium">
-                                Nama Pelanggan <span class="text-destructive">*</span>
+                            <Label for="first_name" class="text-sm font-medium">
+                                Nama Depan <span class="text-destructive">*</span>
                             </Label>
                             <Input
-                                id="customer_name"
-                                v-model="form.customer_name"
+                                id="first_name"
+                                v-model="form.first_name"
                                 type="text"
-                                placeholder="Masukkan nama pelanggan"
-                                :class="{ 'border-destructive': form.errors.customer_name }"
+                                placeholder="Masukkan nama depan"
+                                :class="{ 'border-destructive': form.errors.first_name }"
                                 class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                             />
-                            <InputError :message="form.errors.customer_name" />
+                            <InputError :message="form.errors.first_name" />
+                            <p class="text-xs text-muted-foreground mt-1">
+                                Hanya huruf yang diperbolehkan
+                            </p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <Label for="last_name" class="text-sm font-medium">
+                                Nama Belakang <span class="text-destructive">*</span>
+                            </Label>
+                            <Input
+                                id="last_name"
+                                v-model="form.last_name"
+                                type="text"
+                                placeholder="Masukkan nama belakang"
+                                :class="{ 'border-destructive': form.errors.last_name }"
+                                class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                            />
+                            <InputError :message="form.errors.last_name" />
+                            <p class="text-xs text-muted-foreground mt-1">
+                                Hanya huruf yang diperbolehkan
+                            </p>
                         </div>
 
                         <div class="space-y-2">

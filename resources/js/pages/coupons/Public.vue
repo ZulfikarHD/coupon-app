@@ -12,6 +12,8 @@ interface Coupon {
     type: string;
     description: string;
     customer_name: string;
+    first_name?: string;
+    last_name?: string;
     status: 'active' | 'used' | 'expired';
     expires_at: string | null;
     created_at: string;

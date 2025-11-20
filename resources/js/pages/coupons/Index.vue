@@ -20,6 +20,8 @@ interface Coupon {
     code: string;
     type: string;
     customer_name: string;
+    first_name?: string;
+    last_name?: string;
     customer_phone: string;
     status: 'active' | 'used' | 'expired';
     created_at: string;
@@ -39,6 +41,8 @@ interface Props {
         status?: string | string[];
         search?: string;
         customer_name?: string;
+        first_name?: string;
+        last_name?: string;
         customer_phone?: string;
         coupon_type?: string;
         date_from?: string;
@@ -64,6 +68,8 @@ const form = useForm({
     status: parseStatusFilter(props.filters.status),
     search: props.filters.search || '',
     customer_name: props.filters.customer_name || '',
+    first_name: props.filters.first_name || '',
+    last_name: props.filters.last_name || '',
     customer_phone: props.filters.customer_phone || '',
     coupon_type: props.filters.coupon_type || '',
     date_from: props.filters.date_from || '',
@@ -102,7 +108,7 @@ const statusOptions = [
 
 const toggleStatus = (status: string, checked: boolean) => {
     const currentStatus = Array.isArray(form.status) ? form.status : [];
-    
+
     if (checked) {
         // Add status if not already present
         if (!currentStatus.includes(status)) {
@@ -112,14 +118,14 @@ const toggleStatus = (status: string, checked: boolean) => {
         // Remove status if present
         form.status = currentStatus.filter((s) => s !== status);
     }
-    
+
     applyFilters();
 };
 
 const applyFilters = () => {
     const queryString = buildQueryString();
     const url = queryString ? `/coupons?${queryString}` : '/coupons';
-    
+
     router.visit(url, {
         preserveState: true,
         preserveScroll: true,
@@ -132,6 +138,8 @@ const clearFilters = () => {
     form.status = [];
     form.search = '';
     form.customer_name = '';
+    form.first_name = '';
+    form.last_name = '';
     form.customer_phone = '';
     form.coupon_type = '';
     form.date_from = '';
@@ -150,6 +158,8 @@ const hasActiveFilters = computed(() => {
         (Array.isArray(form.status) && form.status.length > 0) ||
         form.search ||
         form.customer_name ||
+        form.first_name ||
+        form.last_name ||
         form.customer_phone ||
         form.coupon_type ||
         form.date_from ||
@@ -161,45 +171,53 @@ const hasActiveFilters = computed(() => {
 
 const activeFilterBadges = computed(() => {
     const badges: Array<{ label: string; key: string }> = [];
-    
+
     if (Array.isArray(form.status) && form.status.length > 0) {
         form.status.forEach((s) => {
             badges.push({ label: statusLabels[s as keyof typeof statusLabels], key: `status-${s}` });
         });
     }
-    
+
     if (form.search) {
         badges.push({ label: `Cari: ${form.search}`, key: 'search' });
     }
-    
+
     if (form.customer_name) {
         badges.push({ label: `Nama: ${form.customer_name}`, key: 'customer_name' });
     }
-    
+
+    if (form.first_name) {
+        badges.push({ label: `Nama Depan: ${form.first_name}`, key: 'first_name' });
+    }
+
+    if (form.last_name) {
+        badges.push({ label: `Nama Belakang: ${form.last_name}`, key: 'last_name' });
+    }
+
     if (form.customer_phone) {
         badges.push({ label: `Telepon: ${form.customer_phone}`, key: 'customer_phone' });
     }
-    
+
     if (form.coupon_type) {
         badges.push({ label: `Jenis: ${form.coupon_type}`, key: 'coupon_type' });
     }
-    
+
     if (form.date_from) {
         badges.push({ label: `Dibuat dari: ${form.date_from}`, key: 'date_from' });
     }
-    
+
     if (form.date_to) {
         badges.push({ label: `Dibuat sampai: ${form.date_to}`, key: 'date_to' });
     }
-    
+
     if (form.expires_from) {
         badges.push({ label: `Kadaluwarsa dari: ${form.expires_from}`, key: 'expires_from' });
     }
-    
+
     if (form.expires_to) {
         badges.push({ label: `Kadaluwarsa sampai: ${form.expires_to}`, key: 'expires_to' });
     }
-    
+
     return badges;
 });
 
@@ -217,13 +235,15 @@ const removeFilter = (key: string) => {
 
 const buildQueryString = (page?: number): string => {
     const searchParams = new URLSearchParams();
-    
+
     // Use array notation for multiple status values so Laravel can parse them properly
     if (Array.isArray(form.status) && form.status.length > 0) {
         form.status.forEach((s) => searchParams.append('status[]', s));
     }
     if (form.search) searchParams.set('search', form.search);
     if (form.customer_name) searchParams.set('customer_name', form.customer_name);
+    if (form.first_name) searchParams.set('first_name', form.first_name);
+    if (form.last_name) searchParams.set('last_name', form.last_name);
     if (form.customer_phone) searchParams.set('customer_phone', form.customer_phone);
     if (form.coupon_type) searchParams.set('coupon_type', form.coupon_type);
     if (form.date_from) searchParams.set('date_from', form.date_from);
@@ -233,7 +253,7 @@ const buildQueryString = (page?: number): string => {
     if (form.sort) searchParams.set('sort', form.sort);
     if (form.direction) searchParams.set('direction', form.direction);
     if (page) searchParams.set('page', String(page));
-    
+
     return searchParams.toString();
 };
 
@@ -241,7 +261,7 @@ const getPageNumbers = (): (number | string)[] => {
     const current = props.coupons.current_page;
     const last = props.coupons.last_page;
     const pages: (number | string)[] = [];
-    
+
     if (last <= 7) {
         for (let i = 1; i <= last; i++) {
             pages.push(i);
@@ -263,7 +283,7 @@ const getPageNumbers = (): (number | string)[] => {
             pages.push(last);
         }
     }
-    
+
     return pages;
 };
 
@@ -419,6 +439,32 @@ const breadcrumbs = [
                                         />
                                     </div>
 
+                                    <!-- First Name -->
+                                    <div class="space-y-2">
+                                        <Label for="first_name" class="text-sm font-medium">Nama Depan</Label>
+                                        <Input
+                                            id="first_name"
+                                            v-model="form.first_name"
+                                            type="text"
+                                            placeholder="Nama depan..."
+                                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                                            @input="applyFilters"
+                                        />
+                                    </div>
+
+                                    <!-- Last Name -->
+                                    <div class="space-y-2">
+                                        <Label for="last_name" class="text-sm font-medium">Nama Belakang</Label>
+                                        <Input
+                                            id="last_name"
+                                            v-model="form.last_name"
+                                            type="text"
+                                            placeholder="Nama belakang..."
+                                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                                            @input="applyFilters"
+                                        />
+                                    </div>
+
                                     <!-- Customer Phone -->
                                     <div class="space-y-2">
                                         <Label for="customer_phone" class="text-sm font-medium">Telepon Pelanggan</Label>
@@ -530,7 +576,7 @@ const breadcrumbs = [
                                     </div>
                                     <StatusBadge :status="coupon.status" size="sm" />
                                 </div>
-                                
+
                                 <!-- Type and Date Row -->
                                 <div class="flex items-center justify-between gap-2 flex-wrap">
                                     <Badge variant="outline" class="text-xs">{{ coupon.type }}</Badge>
@@ -670,7 +716,7 @@ const breadcrumbs = [
                                 >
                                     <ChevronLeft class="h-4 w-4" />
                                 </Button>
-                                
+
                                 <!-- Page Numbers - Hide on very small screens -->
                                 <div class="hidden xs:flex gap-1">
                                     <template v-for="page in getPageNumbers()" :key="page">
@@ -687,7 +733,7 @@ const breadcrumbs = [
                                         <span v-else class="px-2 py-1 text-xs text-muted-foreground">...</span>
                                     </template>
                                 </div>
-                                
+
                                 <!-- Next Button -->
                                 <Button
                                     variant="outline"

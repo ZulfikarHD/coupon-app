@@ -18,14 +18,14 @@ import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
 import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
 import Alert from '@/components/ui/alert/Alert.vue';
 import AlertDescription from '@/components/ui/alert/AlertDescription.vue';
-import { 
-    Copy, 
-    Trash2, 
-    ArrowLeft, 
-    QrCode, 
-    User, 
-    Phone, 
-    Mail, 
+import {
+    Copy,
+    Trash2,
+    ArrowLeft,
+    QrCode,
+    User,
+    Phone,
+    Mail,
     Link as LinkIcon,
     FileText,
     CheckCircle2,
@@ -43,6 +43,8 @@ interface Coupon {
     type: string;
     description: string;
     customer_name: string;
+    first_name?: string;
+    last_name?: string;
     customer_phone: string;
     customer_email: string | null;
     customer_social_media: string | null;
@@ -98,12 +100,12 @@ const actionLabels = {
 const copyToClipboard = async (event: Event) => {
     event.preventDefault();
     event.stopPropagation();
-    
+
     isCopying.value = true;
-    
+
     // Build the URL to copy
     const urlToCopy = props.publicUrl || `${window.location.origin}/coupon/${props.coupon.code}`;
-    
+
     try {
         // Try modern clipboard API first (works in HTTPS or localhost)
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -112,7 +114,7 @@ const copyToClipboard = async (event: Event) => {
             swal.toast('Link berhasil disalin ke clipboard!', 'success');
             return;
         }
-        
+
         // Fallback for older browsers or non-secure contexts
         const textArea = document.createElement('textarea');
         textArea.value = urlToCopy;
@@ -125,7 +127,7 @@ const copyToClipboard = async (event: Event) => {
         textArea.focus();
         textArea.select();
         textArea.setSelectionRange(0, urlToCopy.length);
-        
+
         try {
             const successful = document.execCommand('copy');
             document.body.removeChild(textArea);
@@ -177,7 +179,7 @@ const deleteCoupon = async () => {
         'Batal',
         '#ef4444'
     );
-    
+
     if (result.isConfirmed) {
         router.delete(`/coupons/${props.coupon.id}`);
     }
@@ -409,9 +411,20 @@ const breadcrumbs = [
                             <div class="space-y-2">
                                 <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                                     <User class="h-4 w-4 flex-shrink-0" />
-                                    <span>Nama</span>
+                                    <span>Nama Lengkap</span>
                                 </div>
                                 <p class="mt-1 text-base font-medium pl-6">{{ coupon.customer_name }}</p>
+                            </div>
+                            <div v-if="coupon.first_name || coupon.last_name" class="space-y-2">
+                                <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                                    <User class="h-4 w-4 flex-shrink-0" />
+                                    <span>Nama Depan & Belakang</span>
+                                </div>
+                                <p class="mt-1 text-base pl-6">
+                                    <span v-if="coupon.first_name">{{ coupon.first_name }}</span>
+                                    <span v-if="coupon.first_name && coupon.last_name"> </span>
+                                    <span v-if="coupon.last_name">{{ coupon.last_name }}</span>
+                                </p>
                             </div>
                             <div class="space-y-2">
                                 <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">

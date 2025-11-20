@@ -30,6 +30,8 @@ class CouponService
             $query->where(function ($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%")
                     ->orWhere('customer_name', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhere('customer_phone', 'like', "%{$search}%")
                     ->orWhere('type', 'like', "%{$search}%");
             });
@@ -38,6 +40,14 @@ class CouponService
         // Advanced filters
         if ($request->filled('customer_name')) {
             $query->where('customer_name', 'like', "%{$request->customer_name}%");
+        }
+
+        if ($request->filled('first_name')) {
+            $query->where('first_name', 'like', "%{$request->first_name}%");
+        }
+
+        if ($request->filled('last_name')) {
+            $query->where('last_name', 'like', "%{$request->last_name}%");
         }
 
         if ($request->filled('customer_phone')) {
@@ -100,12 +110,18 @@ class CouponService
         $data['status'] = Coupon::STATUS_ACTIVE;
         $data['created_by'] = Auth::id();
 
+        // Create customer_name from first_name and last_name if provided
+        if (isset($data['first_name']) && isset($data['last_name'])) {
+            $data['customer_name'] = trim($data['first_name'] . ' ' . $data['last_name']);
+        }
+
         // Use Job to create coupon synchronously
         GenerateCouponCode::dispatchSync($data);
 
         // Get the created coupon - use multiple fallback strategies
         $coupon = Coupon::where('created_by', Auth::id())
-            ->where('customer_name', $data['customer_name'])
+            ->where('first_name', $data['first_name'])
+            ->where('last_name', $data['last_name'])
             ->where('customer_phone', $data['customer_phone'])
             ->where('type', $data['type'])
             ->latest('id')

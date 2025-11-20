@@ -24,11 +24,16 @@ class CouponFactory extends Factory
         $part3 = strtoupper(fake()->lexify('???'));
         $code = "{$part1}-{$part2}-{$part3}";
 
+        $firstName = fake()->firstName();
+        $lastName = fake()->lastName();
+
         return [
             'code' => $code,
             'type' => fake()->randomElement(['Gratis 1 Kopi', 'Diskon 20%', 'Buy 1 Get 1', 'Diskon 10%']),
             'description' => fake()->sentence(),
-            'customer_name' => fake()->name(),
+            'customer_name' => $firstName . ' ' . $lastName,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'customer_phone' => '628' . fake()->numerify('##########'),
             'customer_email' => fake()->optional()->safeEmail(),
             'customer_social_media' => fake()->optional()->userName(),
