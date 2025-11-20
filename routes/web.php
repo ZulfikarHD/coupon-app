@@ -30,10 +30,14 @@ Route::get('/coupon/{code}', function ($code) {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('coupons', CouponController::class);
 
-    // Scan route (placeholder - will be implemented in User Story 2.3)
+    // Scan route
     Route::get('/scan', function () {
         return Inertia::render('scan/Index');
     })->name('scan');
+
+    // API routes for scanning and validation
+    Route::get('/api/coupons/{code}/check', [CouponController::class, 'check'])->name('api.coupons.check');
+    Route::post('/coupons/{code}/validate', [CouponController::class, 'validate'])->name('coupons.validate');
 });
 
 require __DIR__.'/settings.php';
