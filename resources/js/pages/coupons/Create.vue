@@ -18,6 +18,7 @@ const formatDateForInput = (date: Date): string => {
 };
 
 // Get today's date for min attribute (computed to ensure reactivity)
+// HTML5 date inputs support the 'min' attribute in YYYY-MM-DD format
 const today = computed(() => formatDateForInput(new Date()));
 
 // Get date 2 months from now for initial value
@@ -252,6 +253,7 @@ const breadcrumbs = [
                                     type="date"
                                     :min="today"
                                     :disabled="neverExpires"
+                                    :readonly="neverExpires"
                                     :class="[
                                         'flex h-11 w-full rounded-md border border-input bg-transparent pl-10 pr-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:h-10 md:text-sm',
                                         form.errors.expires_at ? 'border-destructive' : '',
