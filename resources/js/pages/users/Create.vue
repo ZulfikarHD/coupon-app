@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,25 +45,21 @@ const breadcrumbs = [
     <Head title="Tambah User" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
             <!-- Header -->
-            <div class="space-y-1">
-                <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">
-                    Tambah User Baru
-                </h1>
-                <p class="text-sm text-muted-foreground md:text-base">
-                    Buat akun user baru untuk sistem
-                </p>
-            </div>
+            <PageHeader
+                title="Tambah User Baru"
+                description="Buat akun user baru untuk sistem"
+            />
 
             <!-- Form -->
-            <Card class="border-2">
-                <CardHeader>
-                    <CardTitle class="flex items-center gap-2">
+            <Card class="border rounded-xl">
+                <CardHeader class="pb-4">
+                    <div class="flex items-center gap-2">
                         <User class="h-5 w-5 text-primary" />
-                        Informasi User
-                    </CardTitle>
-                    <CardDescription>
+                        <CardTitle class="text-lg font-semibold">Informasi User</CardTitle>
+                    </div>
+                    <CardDescription class="text-sm mt-1">
                         Lengkapi informasi user yang akan dibuat
                     </CardDescription>
                 </CardHeader>
@@ -83,6 +80,7 @@ const breadcrumbs = [
                                 placeholder="Masukkan nama lengkap"
                                 required
                                 autocomplete="name"
+                                class="rounded-xl"
                                 :class="{ 'border-destructive': form.errors.name }"
                             />
                             <InputError :message="form.errors.name" />
@@ -186,17 +184,18 @@ const breadcrumbs = [
                         </div>
 
                         <!-- Actions -->
-                        <div class="flex items-center gap-4">
-                            <Button type="submit" :disabled="form.processing" size="lg">
-                                {{ form.processing ? 'Menyimpan...' : 'Simpan' }}
-                            </Button>
+                        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                             <Button
                                 type="button"
                                 variant="outline"
                                 as-child
                                 size="lg"
+                                class="rounded-xl"
                             >
                                 <a href="/users">Batal</a>
+                            </Button>
+                            <Button type="submit" :disabled="form.processing" size="lg" class="rounded-xl">
+                                {{ form.processing ? 'Menyimpan...' : 'Simpan' }}
                             </Button>
                         </div>
                     </form>

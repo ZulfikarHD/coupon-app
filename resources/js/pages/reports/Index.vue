@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -216,25 +218,21 @@ const viewCustomerCoupons = (phone: string) => {
     <Head title="Laporan" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
             <!-- Header -->
-            <div class="space-y-1">
-                <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">
-                    Laporan & Analitik
-                </h1>
-                <p class="text-sm text-muted-foreground md:text-base">
-                    Analisis penggunaan kupon dan statistik bisnis
-                </p>
-            </div>
+            <PageHeader
+                title="Laporan & Analitik"
+                description="Analisis penggunaan kupon dan statistik bisnis"
+            />
 
             <!-- Date Range Filter -->
-            <Card class="border-2">
-                <CardHeader>
-                    <CardTitle class="flex items-center gap-2">
+            <Card class="border rounded-xl">
+                <CardHeader class="pb-4">
+                    <div class="flex items-center gap-2">
                         <BarChart3 class="h-5 w-5 text-primary" />
-                        Filter Periode
-                    </CardTitle>
-                    <CardDescription>
+                        <CardTitle class="text-lg font-semibold">Filter Periode</CardTitle>
+                    </div>
+                    <CardDescription class="text-sm mt-1">
                         Pilih rentang tanggal untuk melihat statistik
                     </CardDescription>
                 </CardHeader>
@@ -248,7 +246,7 @@ const viewCustomerCoupons = (phone: string) => {
                                     v-model="form.date_from"
                                     type="date"
                                     :disabled="isLoading"
-                                    class="w-full"
+                                    class="w-full rounded-xl"
                                 />
                             </div>
                             <div class="flex-1 space-y-2">
@@ -265,7 +263,7 @@ const viewCustomerCoupons = (phone: string) => {
                                 <Button
                                     type="submit"
                                     :disabled="isLoading"
-                                    class="gap-2"
+                                    class="gap-2 rounded-xl"
                                 >
                                     <Loader2 v-if="isLoading" class="h-4 w-4 animate-spin" />
                                     <BarChart3 v-else class="h-4 w-4" />
@@ -276,6 +274,7 @@ const viewCustomerCoupons = (phone: string) => {
                                     variant="outline"
                                     @click="resetFilters"
                                     :disabled="isLoading"
+                                    class="rounded-xl"
                                 >
                                     Reset
                                 </Button>
@@ -290,7 +289,7 @@ const viewCustomerCoupons = (phone: string) => {
                 <Card
                     v-for="(stat, index) in statCards"
                     :key="index"
-                    class="border-2 transition-shadow hover:shadow-md"
+                    class="border transition-all duration-200 hover:shadow-md rounded-xl"
                 >
                     <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle class="text-sm font-medium text-muted-foreground">
@@ -313,15 +312,15 @@ const viewCustomerCoupons = (phone: string) => {
             </div>
 
             <!-- Top Coupon Types Table -->
-            <Card class="border-2">
-                <CardHeader>
+            <Card class="border rounded-xl">
+                <CardHeader class="pb-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <CardTitle class="flex items-center gap-2">
+                            <div class="flex items-center gap-2">
                                 <TrendingUp class="h-5 w-5 text-primary" />
-                                Top Tipe Kupon
-                            </CardTitle>
-                            <CardDescription>
+                                <CardTitle class="text-lg font-semibold">Top Tipe Kupon</CardTitle>
+                            </div>
+                            <CardDescription class="text-sm mt-1">
                                 Ranking tipe kupon berdasarkan jumlah dibuat dan digunakan
                             </CardDescription>
                         </div>
@@ -331,7 +330,7 @@ const viewCustomerCoupons = (phone: string) => {
                                 size="sm"
                                 @click="exportToExcel"
                                 :disabled="isExporting"
-                                class="gap-2"
+                                class="gap-2 rounded-xl"
                             >
                                 <Loader2 v-if="isExporting && exportFormat === 'xlsx'" class="h-4 w-4 animate-spin" />
                                 <FileSpreadsheet v-else class="h-4 w-4" />
@@ -352,12 +351,12 @@ const viewCustomerCoupons = (phone: string) => {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div v-if="topTypes.length === 0" class="py-8 text-center">
-                        <Ticket class="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <p class="text-sm text-muted-foreground">
-                            Tidak ada data kupon dalam periode yang dipilih
-                        </p>
-                    </div>
+                    <EmptyState
+                        v-if="topTypes.length === 0"
+                        :icon="Ticket"
+                        title="Tidak ada data kupon"
+                        description="Tidak ada data kupon dalam periode yang dipilih"
+                    />
                     <div v-else class="overflow-x-auto">
                         <table class="w-full border-collapse">
                             <thead>
@@ -419,23 +418,23 @@ const viewCustomerCoupons = (phone: string) => {
             </Card>
 
             <!-- Frequent Customers Table -->
-            <Card class="border-2">
-                <CardHeader>
-                    <CardTitle class="flex items-center gap-2">
+            <Card class="border rounded-xl">
+                <CardHeader class="pb-4">
+                    <div class="flex items-center gap-2">
                         <Users class="h-5 w-5 text-primary" />
-                        Pelanggan Sering
-                    </CardTitle>
-                    <CardDescription>
+                        <CardTitle class="text-lg font-semibold">Pelanggan Sering</CardTitle>
+                    </div>
+                    <CardDescription class="text-sm mt-1">
                         Top 20 pelanggan berdasarkan jumlah kupon yang diterima dalam periode
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div v-if="frequentCustomers.length === 0" class="py-8 text-center">
-                        <Users class="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <p class="text-sm text-muted-foreground">
-                            Tidak ada data pelanggan dalam periode yang dipilih
-                        </p>
-                    </div>
+                    <EmptyState
+                        v-if="frequentCustomers.length === 0"
+                        :icon="Users"
+                        title="Tidak ada data pelanggan"
+                        description="Tidak ada data pelanggan dalam periode yang dipilih"
+                    />
                     <div v-else class="overflow-x-auto">
                         <table class="w-full border-collapse">
                             <thead>
@@ -501,7 +500,7 @@ const viewCustomerCoupons = (phone: string) => {
                                             variant="ghost"
                                             size="sm"
                                             @click="viewCustomerCoupons(customer.customer_phone)"
-                                            class="gap-2"
+                                            class="gap-2 rounded-xl"
                                         >
                                             <Eye class="h-4 w-4" />
                                             Lihat Kupon
@@ -515,13 +514,13 @@ const viewCustomerCoupons = (phone: string) => {
             </Card>
 
             <!-- Daily Usage Chart Placeholder -->
-            <Card class="border-2">
-                <CardHeader>
-                    <CardTitle class="flex items-center gap-2">
+            <Card class="border rounded-xl">
+                <CardHeader class="pb-4">
+                    <div class="flex items-center gap-2">
                         <BarChart3 class="h-5 w-5 text-primary" />
-                        Grafik Penggunaan Harian
-                    </CardTitle>
-                    <CardDescription>
+                        <CardTitle class="text-lg font-semibold">Grafik Penggunaan Harian</CardTitle>
+                    </div>
+                    <CardDescription class="text-sm mt-1">
                         Visualisasi jumlah validasi kupon per hari (opsional)
                     </CardDescription>
                 </CardHeader>
