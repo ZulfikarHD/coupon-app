@@ -369,7 +369,7 @@ if (typeof window !== 'undefined') {
                     <div class="space-y-4">
                         <div
                             :id="scannerId"
-                            class="w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800 flex items-center justify-center pointer-events-auto"
+                            class="w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden relative"
                             style="min-height: 400px; aspect-ratio: 1;"
                         >
                             <div v-if="!isScanning" class="text-center space-y-2 p-8">
@@ -509,3 +509,51 @@ if (typeof window !== 'undefined') {
         </Dialog>
     </AppLayout>
 </template>
+
+<style scoped>
+/* Ensure scanner elements are contained and don't block navigation */
+#qr-reader {
+    position: relative;
+    isolation: isolate;
+    contain: layout style paint;
+    overflow: hidden;
+}
+
+/* Contain scanner video and canvas within the container */
+#qr-reader video,
+#qr-reader canvas {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    pointer-events: auto;
+}
+
+/* Prevent any Html5Qrcode overlays from blocking navigation */
+:deep(#qr-reader__dashboard),
+:deep(#qr-reader__camera_selection),
+:deep(#qr-reader__file_selection) {
+    position: absolute !important;
+    z-index: 1 !important;
+    pointer-events: auto;
+}
+
+/* Ensure navigation elements stay on top and are clickable */
+:deep(nav) {
+    position: relative !important;
+    z-index: 1000 !important;
+    pointer-events: auto !important;
+}
+
+/* Ensure links in navigation are clickable */
+:deep(nav a),
+:deep(nav button),
+:deep([role="navigation"] a),
+:deep([role="navigation"] button) {
+    position: relative !important;
+    z-index: 1001 !important;
+    pointer-events: auto !important;
+}
+</style>
