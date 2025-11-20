@@ -37,6 +37,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Validation route (web route for CSRF protection)
     Route::post('/coupons/{code}/validate', [CouponController::class, 'validate'])->name('coupons.validate');
+    
+    // Reversal route (cancel coupon usage)
+    Route::post('/coupons/{id}/reverse', [CouponController::class, 'reverse'])->name('coupons.reverse');
 });
 
 require __DIR__.'/settings.php';

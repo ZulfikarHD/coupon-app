@@ -513,22 +513,22 @@ public function getFormattedPhoneAttribute() {
 
 ---
 
-### User Story 2.7: Reversal Feature
+### User Story 2.7: Reversal Feature ✅ COMPLETED
 **As an** admin/staff  
 **I want to** reverse accidental validations  
 **So that** I can fix mistakes
 
 **Tasks:**
-- [ ] Add "Batalkan Penggunaan" button on coupon detail page
-- [ ] Show button only if coupon status = 'used'
-- [ ] Create reversal modal:
+- [x] Add "Batalkan Penggunaan" button on coupon detail page
+- [x] Show button only if coupon status = 'used'
+- [x] Create reversal modal:
   - Warning text: "Anda yakin ingin membatalkan penggunaan kupon ini?"
   - Password input (required)
   - Reason textarea (required, min 10 chars)
-  - "Konfirmasi Pembatalan" button (red)
+  - "Konfirmasi Pembatalan" button (orange/red)
   - "Batal" button
-- [ ] Create route `POST /coupons/{id}/reverse`
-- [ ] In controller:
+- [x] Create route `POST /coupons/{id}/reverse`
+- [x] In controller:
   - Verify password
   - Verify coupon status = 'used'
   - Update coupon status back to 'active'
@@ -537,16 +537,24 @@ public function getFormattedPhoneAttribute() {
     - notes = reason from form
     - validated_by = Auth::id()
   - Return success
-- [ ] Refresh page after reversal
-- [ ] Show success message
+- [x] Refresh page after reversal (using back() with flash message)
+- [x] Show success message
+
+**Implementation Notes:**
+- Reversal button styled with orange color scheme for visibility
+- Modal uses shadcn/ui Dialog component
+- Real-time character counter for reason field (shows X/10 minimum)
+- Button disabled until both password and minimum 10 chars reason provided
+- Flash messages displayed at top of page (green for success, red for error)
+- Form validation on both frontend and backend
 
 **Acceptance Criteria:**
-- Reversal button appears only for used coupons
-- Password required
-- Reason required (minimum 10 characters)
-- Coupon becomes active again
-- Reversal is logged in validation history
-- Success feedback is clear
+- ✅ Reversal button appears only for used coupons
+- ✅ Password required
+- ✅ Reason required (minimum 10 characters)
+- ✅ Coupon becomes active again
+- ✅ Reversal is logged in validation history
+- ✅ Success feedback is clear
 
 **Story Points:** 5
 
@@ -559,9 +567,9 @@ public function getFormattedPhoneAttribute() {
 - ✅ Public coupon view page (mobile-first design)
 - ✅ QR scanner functional with camera and manual input
 - ✅ Validation with password works
-- ⏳ Reversal feature (pending)
+- ✅ Reversal feature (completed)
 
-**Sprint 2 Progress: 34/39 Story Points Completed (87%)**
+**Sprint 2 Progress: 39/39 Story Points Completed (100%)** 🎉
 
 ---
 

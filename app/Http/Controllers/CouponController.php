@@ -266,6 +266,44 @@ class CouponController extends Controller
     }
 
     /**
+     * Reverse (cancel) a coupon validation
+     */
+    public function reverse(Request $request, string $id)
+    {
+        $request->validate([
+            'password' => ['required', 'string'],
+            'reason' => ['required', 'string', 'min:10'],
+        ]);
+
+        // Verify password
+        if (!Hash::check($request->password, Auth::user()->password)) {
+            return back()->with('error', 'Password salah');
+        }
+
+        $coupon = Coupon::findOrFail($id);
+
+        // Verify coupon status is 'used'
+        if ($coupon->status !== Coupon::STATUS_USED) {
+            return back()->with('error', 'Hanya kupon yang sudah digunakan yang dapat dibatalkan');
+        }
+
+        // Update coupon status back to 'active'
+        $coupon->status = Coupon::STATUS_ACTIVE;
+        $coupon->save();
+
+        // Create reversal validation record
+        CouponValidation::create([
+            'coupon_id' => $coupon->id,
+            'validated_by' => Auth::id(),
+            'validated_at' => now(),
+            'action' => 'reversed',
+            'notes' => $request->reason,
+        ]);
+
+        return back()->with('success', 'Penggunaan kupon berhasil dibatalkan');
+    }
+
+    /**
      * Extract coupon code from URL
      */
     private function extractCodeFromUrl(string $input): string

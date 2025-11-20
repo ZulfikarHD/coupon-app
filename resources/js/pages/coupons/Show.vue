@@ -1,9 +1,20 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import Input from '@/components/ui/input/Input.vue';
+import Label from '@/components/ui/label/Label.vue';
+import Textarea from '@/components/ui/textarea.vue';
+import Dialog from '@/components/ui/dialog/Dialog.vue';
+import DialogContent from '@/components/ui/dialog/DialogContent.vue';
+import DialogDescription from '@/components/ui/dialog/DialogDescription.vue';
+import DialogFooter from '@/components/ui/dialog/DialogFooter.vue';
+import DialogHeader from '@/components/ui/dialog/DialogHeader.vue';
+import DialogTitle from '@/components/ui/dialog/DialogTitle.vue';
+import Alert from '@/components/ui/alert/Alert.vue';
+import AlertDescription from '@/components/ui/alert/AlertDescription.vue';
 import { 
     Copy, 
     Trash2, 
@@ -15,9 +26,11 @@ import {
     Link as LinkIcon,
     FileText,
     CheckCircle2,
-    XCircle
+    XCircle,
+    RotateCcw,
+    AlertTriangle
 } from 'lucide-vue-next';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import QRCode from 'qrcode';
 
 interface Coupon {
@@ -57,6 +70,18 @@ const props = defineProps<Props>();
 
 const qrCodeDataUrl = ref('');
 const isCopying = ref(false);
+const showReversalModal = ref(false);
+
+// Flash messages from backend
+const page = usePage();
+const flashSuccess = computed(() => page.props.flash?.success);
+const flashError = computed(() => page.props.flash?.error);
+
+// Reversal form
+const reversalForm = useForm({
+    password: '',
+    reason: '',
+});
 
 const statusColors = {
     active: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
@@ -141,6 +166,25 @@ const deleteCoupon = () => {
     }
 };
 
+const openReversalModal = () => {
+    showReversalModal.value = true;
+};
+
+const closeReversalModal = () => {
+    showReversalModal.value = false;
+    reversalForm.reset();
+    reversalForm.clearErrors();
+};
+
+const submitReversal = () => {
+    reversalForm.post(`/coupons/${props.coupon.id}/reverse`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeReversalModal();
+        },
+    });
+};
+
 onMounted(async () => {
     // Generate QR Code
     try {
@@ -201,6 +245,15 @@ const breadcrumbs = [
                         <span class="hidden sm:inline">{{ isCopying ? 'Menyalin...' : 'Salin Link' }}</span>
                     </Button>
                     <Button
+                        v-if="coupon.status === 'used'"
+                        variant="outline"
+                        class="h-11 gap-2 border-orange-500 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
+                        @click="openReversalModal"
+                    >
+                        <RotateCcw class="h-4 w-4" />
+                        <span class="hidden sm:inline">Batalkan Penggunaan</span>
+                    </Button>
+                    <Button
                         variant="destructive"
                         class="h-11 gap-2"
                         @click="deleteCoupon"
@@ -210,6 +263,16 @@ const breadcrumbs = [
                     </Button>
                 </div>
             </div>
+
+            <!-- Flash Messages -->
+            <Alert v-if="flashSuccess" class="border-green-500 bg-green-500/10 text-green-700 dark:text-green-400">
+                <CheckCircle2 class="h-4 w-4" />
+                <AlertDescription>{{ flashSuccess }}</AlertDescription>
+            </Alert>
+            <Alert v-if="flashError" variant="destructive">
+                <AlertTriangle class="h-4 w-4" />
+                <AlertDescription>{{ flashError }}</AlertDescription>
+            </Alert>
 
             <div class="grid gap-6 lg:grid-cols-3">
                 <!-- Main Content -->
@@ -417,5 +480,93 @@ const breadcrumbs = [
                 </div>
             </div>
         </div>
+
+        <!-- Reversal Modal -->
+        <Dialog :open="showReversalModal" @update:open="closeReversalModal">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle class="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+                        <AlertTriangle class="h-5 w-5" />
+                        Batalkan Penggunaan Kupon
+                    </DialogTitle>
+                    <DialogDescription>
+                        Anda yakin ingin membatalkan penggunaan kupon ini? Kupon akan kembali menjadi aktif dan dapat digunakan lagi.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <form @submit.prevent="submitReversal" class="space-y-4 py-4">
+                    <!-- Coupon Info Display -->
+                    <div class="rounded-lg border bg-muted/50 p-4 space-y-2">
+                        <div>
+                            <p class="text-xs font-medium text-muted-foreground">Kode Kupon</p>
+                            <p class="mt-1 font-mono font-semibold">{{ coupon.code }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted-foreground">Pelanggan</p>
+                            <p class="mt-1">{{ coupon.customer_name }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Password Input -->
+                    <div class="space-y-2">
+                        <Label for="reversal-password">
+                            Password Anda <span class="text-destructive">*</span>
+                        </Label>
+                        <Input
+                            id="reversal-password"
+                            v-model="reversalForm.password"
+                            type="password"
+                            placeholder="Masukkan password untuk konfirmasi"
+                            :disabled="reversalForm.processing"
+                            :class="{ 'border-destructive': reversalForm.errors.password }"
+                        />
+                        <p v-if="reversalForm.errors.password" class="text-sm text-destructive">
+                            {{ reversalForm.errors.password }}
+                        </p>
+                    </div>
+
+                    <!-- Reason Textarea -->
+                    <div class="space-y-2">
+                        <Label for="reversal-reason">
+                            Alasan Pembatalan <span class="text-destructive">*</span>
+                        </Label>
+                        <Textarea
+                            id="reversal-reason"
+                            v-model="reversalForm.reason"
+                            placeholder="Jelaskan alasan pembatalan (minimal 10 karakter)..."
+                            rows="3"
+                            :disabled="reversalForm.processing"
+                            :class="{ 'border-destructive': reversalForm.errors.reason }"
+                        />
+                        <p v-if="reversalForm.errors.reason" class="text-sm text-destructive">
+                            {{ reversalForm.errors.reason }}
+                        </p>
+                        <p v-else class="text-xs text-muted-foreground">
+                            {{ reversalForm.reason.length }} / 10 karakter minimum
+                        </p>
+                    </div>
+
+                    <DialogFooter class="gap-2 sm:gap-0">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            @click="closeReversalModal"
+                            :disabled="reversalForm.processing"
+                        >
+                            Batal
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="destructive"
+                            class="gap-2 bg-orange-500 hover:bg-orange-600"
+                            :disabled="reversalForm.processing || !reversalForm.password || reversalForm.reason.length < 10"
+                        >
+                            <RotateCcw v-if="!reversalForm.processing" class="h-4 w-4" />
+                            {{ reversalForm.processing ? 'Memproses...' : 'Konfirmasi Pembatalan' }}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template>
