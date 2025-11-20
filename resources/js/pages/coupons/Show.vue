@@ -30,8 +30,9 @@ import {
     RotateCcw,
     AlertTriangle
 } from 'lucide-vue-next';
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, ref, computed, watch } from 'vue';
 import QRCode from 'qrcode';
+import { useSweetAlert } from '@/composables/useSweetAlert';
 
 interface Coupon {
     id: number;
@@ -68,6 +69,7 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const swal = useSweetAlert();
 const qrCodeDataUrl = ref('');
 const isCopying = ref(false);
 const showReversalModal = ref(false);
@@ -114,7 +116,7 @@ const copyToClipboard = async (event: Event) => {
         if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(urlToCopy);
             isCopying.value = false;
-            alert('Link berhasil disalin ke clipboard!');
+            swal.toast('Link berhasil disalin ke clipboard!', 'success');
             return;
         }
         
@@ -136,7 +138,7 @@ const copyToClipboard = async (event: Event) => {
             document.body.removeChild(textArea);
             isCopying.value = false;
             if (successful) {
-                alert('Link berhasil disalin ke clipboard!');
+                swal.toast('Link berhasil disalin ke clipboard!', 'success');
             } else {
                 throw new Error('Copy command failed');
             }
@@ -144,24 +146,46 @@ const copyToClipboard = async (event: Event) => {
             document.body.removeChild(textArea);
             isCopying.value = false;
             // Last resort: show the URL in a prompt for manual copy
-            const copied = prompt('Salin link ini (Ctrl+C atau Cmd+C):', urlToCopy);
-            if (copied !== null) {
-                alert('Link siap untuk disalin!');
+            const result = await swal.prompt(
+                'Salin link ini (Ctrl+C atau Cmd+C):',
+                'Salin Link',
+                'Masukkan kode atau URL',
+                urlToCopy,
+                'OK',
+                'Batal'
+            );
+            if (result.isConfirmed) {
+                swal.toast('Link siap untuk disalin!', 'info');
             }
         }
     } catch (err) {
         console.error('Failed to copy:', err);
         isCopying.value = false;
         // Final fallback: show prompt
-        const copied = prompt('Salin link ini (Ctrl+C atau Cmd+C):', urlToCopy);
-        if (copied !== null) {
-            alert('Link siap untuk disalin!');
+        const result = await swal.prompt(
+            'Salin link ini (Ctrl+C atau Cmd+C):',
+            'Salin Link',
+            'Masukkan kode atau URL',
+            urlToCopy,
+            'OK',
+            'Batal'
+        );
+        if (result.isConfirmed) {
+            swal.toast('Link siap untuk disalin!', 'info');
         }
     }
 };
 
-const deleteCoupon = () => {
-    if (confirm('Apakah Anda yakin ingin menghapus kupon ini?')) {
+const deleteCoupon = async () => {
+    const result = await swal.confirm(
+        'Apakah Anda yakin ingin menghapus kupon ini?',
+        'Hapus Kupon',
+        'Ya, Hapus',
+        'Batal',
+        '#ef4444'
+    );
+    
+    if (result.isConfirmed) {
         router.delete(`/coupons/${props.coupon.id}`);
     }
 };
@@ -184,6 +208,19 @@ const submitReversal = () => {
         },
     });
 };
+
+// Watch for flash messages and show SweetAlert2 toasts
+watch(flashSuccess, (message) => {
+    if (message) {
+        swal.toast(message, 'success');
+    }
+});
+
+watch(flashError, (message) => {
+    if (message) {
+        swal.toast(message, 'error');
+    }
+});
 
 onMounted(async () => {
     // Generate QR Code

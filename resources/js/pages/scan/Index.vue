@@ -20,8 +20,9 @@ import {
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { ScanLine, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Loader2 } from 'lucide-vue-next';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { Html5Qrcode } from 'html5-qrcode';
+import { useSweetAlert } from '@/composables/useSweetAlert';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -43,6 +44,7 @@ interface CouponData {
     expires_at: string | null;
 }
 
+const swal = useSweetAlert();
 const scannerId = 'qr-reader';
 const html5QrCode = ref<Html5Qrcode | null>(null);
 const isScanning = ref(false);
@@ -58,6 +60,19 @@ const password = ref('');
 const isSubmitting = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
+
+// Watch for success/error messages and show SweetAlert2 toasts
+watch(successMessage, (message) => {
+    if (message) {
+        swal.toast(message, 'success');
+    }
+});
+
+watch(errorMessage, (message) => {
+    if (message) {
+        swal.toast(message, 'error');
+    }
+});
 
 const startScanner = async () => {
     try {
@@ -250,7 +265,8 @@ const handleValidate = async () => {
         const data = await response.json();
 
         if (response.ok) {
-            successMessage.value = data.message || 'Kupon berhasil divalidasi';
+            const message = data.message || 'Kupon berhasil divalidasi';
+            successMessage.value = message;
             showValidationModal.value = false;
             
             // Reset form
