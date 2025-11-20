@@ -10,12 +10,13 @@ import {
 import { urlIsActive } from '@/lib/utils';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChartColumn, LayoutGrid, LogOut, Menu, ScanLine, Settings, Ticket } from 'lucide-vue-next';
+import { ChartColumn, LayoutGrid, LogOut, Menu, ScanLine, Settings, Ticket, Users } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 
 const page = usePage();
+const isAdmin = computed(() => page.props.auth?.user?.role === 'admin');
 
 const isCurrentRoute = computed(
     () => (url: string) => urlIsActive(url, page.url),
@@ -28,28 +29,41 @@ const activeItemStyles = computed(
             : '',
 );
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/dashboard',
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Kupon',
-        href: '/coupons',
-        icon: Ticket,
-    },
-    {
-        title: 'Scan Kupon',
-        href: '/scan',
-        icon: ScanLine,
-    },
-    {
-        title: 'Laporan',
-        href: '/reports',
-        icon: ChartColumn,
-    },
-];
+const mainNavItems = computed<NavItem[]>(() => {
+    const items: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: '/dashboard',
+            icon: LayoutGrid,
+        },
+        {
+            title: 'Kupon',
+            href: '/coupons',
+            icon: Ticket,
+        },
+        {
+            title: 'Scan Kupon',
+            href: '/scan',
+            icon: ScanLine,
+        },
+        {
+            title: 'Laporan',
+            href: '/reports',
+            icon: ChartColumn,
+        },
+    ];
+
+    // Add User Management for admins
+    if (isAdmin.value) {
+        items.push({
+            title: 'User Management',
+            href: '/users',
+            icon: Users,
+        });
+    }
+
+    return items;
+});
 
 const kuponSubItems: NavItem[] = [
     {
