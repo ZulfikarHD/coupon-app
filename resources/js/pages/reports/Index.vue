@@ -514,48 +514,49 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                         title="Tidak ada data kupon"
                         description="Tidak ada data kupon dalam periode yang dipilih"
                     />
-                    <!-- Mobile View: Cards -->
-                    <div v-else class="block space-y-3 md:hidden">
-                        <Card
-                            v-for="(type, index) in topTypesData"
-                            :key="index"
-                            class="border rounded-xl p-4 active:scale-[0.98] transition-transform"
-                        >
-                            <div class="space-y-3">
-                                <div class="flex items-start justify-between">
-                                    <div class="flex-1">
-                                        <p class="font-semibold text-foreground">{{ type.type }}</p>
+                    <template v-else>
+                        <!-- Mobile View: Cards -->
+                        <div class="block space-y-3 md:hidden">
+                            <Card
+                                v-for="(type, index) in topTypesData"
+                                :key="index"
+                                class="border rounded-xl p-4 active:scale-[0.98] transition-transform"
+                            >
+                                <div class="space-y-3">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-foreground">{{ type.type }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <p class="text-muted-foreground">Dibuat</p>
+                                            <p class="font-medium">{{ type.created_count }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-muted-foreground">Terpakai</p>
+                                            <p class="font-medium">{{ type.used_count }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-muted-foreground">Kedaluwarsa</p>
+                                            <p class="font-medium text-red-600">{{ type.expired_count }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-muted-foreground">Tingkat</p>
+                                            <p class="font-semibold" :class="{
+                                                'text-green-600': type.usage_rate >= 50,
+                                                'text-orange-600': type.usage_rate >= 25 && type.usage_rate < 50,
+                                                'text-red-600': type.usage_rate < 25,
+                                            }">
+                                                {{ type.usage_rate }}%
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-3 text-sm">
-                                    <div>
-                                        <p class="text-muted-foreground">Dibuat</p>
-                                        <p class="font-medium">{{ type.created_count }}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-muted-foreground">Terpakai</p>
-                                        <p class="font-medium">{{ type.used_count }}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-muted-foreground">Kedaluwarsa</p>
-                                        <p class="font-medium text-red-600">{{ type.expired_count }}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-muted-foreground">Tingkat</p>
-                                        <p class="font-semibold" :class="{
-                                            'text-green-600': type.usage_rate >= 50,
-                                            'text-orange-600': type.usage_rate >= 25 && type.usage_rate < 50,
-                                            'text-red-600': type.usage_rate < 25,
-                                        }">
-                                            {{ type.usage_rate }}%
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
-                    </div>
-                    <!-- Desktop View: Table -->
-                    <div v-else class="hidden md:block overflow-x-auto">
+                            </Card>
+                        </div>
+                        <!-- Desktop View: Table -->
+                        <div class="hidden md:block overflow-x-auto">
                         <table class="w-full border-collapse">
                             <thead>
                                 <tr class="border-b border-border">
@@ -641,7 +642,8 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
+                        </div>
+                    </template>
                     
                     <!-- Pagination for Top Types -->
                     <div v-if="topTypesPagination && topTypesPagination.last_page > 1" class="border-t p-4">
@@ -711,56 +713,57 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                         title="Tidak ada data pelanggan"
                         description="Tidak ada data pelanggan dalam periode yang dipilih"
                     />
-                    <!-- Mobile View: Cards -->
-                    <div v-else class="block space-y-3 md:hidden">
-                        <Card
-                            v-for="(customer, index) in customersData"
-                            :key="index"
-                            class="border rounded-xl p-4 active:scale-[0.98] transition-transform"
-                        >
-                            <div class="space-y-3">
-                                <div>
-                                    <p class="font-semibold text-foreground">{{ customer.customer_name }}</p>
-                                    <p class="text-sm text-muted-foreground mt-1">{{ customer.formatted_phone }}</p>
+                    <template v-else>
+                        <!-- Mobile View: Cards -->
+                        <div class="block space-y-3 md:hidden">
+                            <Card
+                                v-for="(customer, index) in customersData"
+                                :key="index"
+                                class="border rounded-xl p-4 active:scale-[0.98] transition-transform"
+                            >
+                                <div class="space-y-3">
+                                    <div>
+                                        <p class="font-semibold text-foreground">{{ customer.customer_name }}</p>
+                                        <p class="text-sm text-muted-foreground mt-1">{{ customer.formatted_phone }}</p>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <p class="text-muted-foreground">Total Kupon</p>
+                                            <p class="font-medium">{{ customer.total_coupons }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-muted-foreground">Terpakai</p>
+                                            <p class="font-medium">{{ customer.total_used }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-muted-foreground">Tingkat</p>
+                                            <p class="font-semibold" :class="{
+                                                'text-green-600': customer.usage_rate >= 50,
+                                                'text-orange-600': customer.usage_rate >= 25 && customer.usage_rate < 50,
+                                                'text-red-600': customer.usage_rate < 25,
+                                            }">
+                                                {{ customer.usage_rate }}%
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p class="text-muted-foreground">Terakhir</p>
+                                            <p class="font-medium text-xs">{{ formatDate(customer.last_coupon_date) }}</p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        @click="viewCustomerCoupons(customer)"
+                                        class="w-full gap-2 rounded-xl active:scale-[0.98] transition-transform"
+                                    >
+                                        <Eye class="h-4 w-4" />
+                                        Lihat Kupon
+                                    </Button>
                                 </div>
-                                <div class="grid grid-cols-2 gap-3 text-sm">
-                                    <div>
-                                        <p class="text-muted-foreground">Total Kupon</p>
-                                        <p class="font-medium">{{ customer.total_coupons }}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-muted-foreground">Terpakai</p>
-                                        <p class="font-medium">{{ customer.total_used }}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-muted-foreground">Tingkat</p>
-                                        <p class="font-semibold" :class="{
-                                            'text-green-600': customer.usage_rate >= 50,
-                                            'text-orange-600': customer.usage_rate >= 25 && customer.usage_rate < 50,
-                                            'text-red-600': customer.usage_rate < 25,
-                                        }">
-                                            {{ customer.usage_rate }}%
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p class="text-muted-foreground">Terakhir</p>
-                                        <p class="font-medium text-xs">{{ formatDate(customer.last_coupon_date) }}</p>
-                                    </div>
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    @click="viewCustomerCoupons(customer)"
-                                    class="w-full gap-2 rounded-xl active:scale-[0.98] transition-transform"
-                                >
-                                    <Eye class="h-4 w-4" />
-                                    Lihat Kupon
-                                </Button>
-                            </div>
-                        </Card>
-                    </div>
-                    <!-- Desktop View: Table -->
-                    <div v-else class="hidden md:block overflow-x-auto">
+                            </Card>
+                        </div>
+                        <!-- Desktop View: Table -->
+                        <div class="hidden md:block overflow-x-auto">
                         <table class="w-full border-collapse">
                             <thead>
                                 <tr class="border-b border-border">
@@ -864,7 +867,8 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
+                        </div>
+                    </template>
                     
                     <!-- Pagination for Frequent Customers -->
                     <div v-if="customersPagination && customersPagination.last_page > 1" class="border-t p-4">
