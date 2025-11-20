@@ -28,6 +28,7 @@ import {
 import { computed, ref } from 'vue';
 import { type BreadcrumbItem } from '@/types';
 import CustomerCouponsModal from '@/components/CustomerCouponsModal.vue';
+import DailyUsageChart from '@/components/DailyUsageChart.vue';
 
 interface SummaryStats {
     total_created: number;
@@ -840,15 +841,13 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div class="py-8 text-center">
-                        <BarChart3 class="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <p class="text-sm text-muted-foreground">
-                            Grafik akan ditampilkan di sini (opsional untuk implementasi masa depan)
-                        </p>
-                        <p class="text-xs text-muted-foreground mt-2">
-                            Data tersedia: {{ dailyUsage.length }} hari
-                        </p>
-                    </div>
+                    <EmptyState
+                        v-if="dailyUsage.length === 0"
+                        :icon="BarChart3"
+                        title="Tidak ada data"
+                        description="Tidak ada data validasi kupon dalam periode yang dipilih"
+                    />
+                    <DailyUsageChart v-else :data="dailyUsage" />
                 </CardContent>
             </Card>
         </div>
