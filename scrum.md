@@ -835,41 +835,7 @@ coupon_validations
 
 ---
 
-### User Story 3.5: Automatic Coupon Expiration
-**As a** system  
-**I want to** automatically mark expired coupons  
-**So that** status is always current
-
-**Tasks:**
-- [ ] Create Artisan command: `php artisan coupons:expire`
-- [ ] Command logic:
-  - Query coupons where:
-    - status = 'active'
-    - expires_at IS NOT NULL
-    - expires_at < now()
-  - Update status to 'expired'
-  - Log count of expired coupons
-- [ ] Register command in Kernel.php
-- [ ] Schedule to run daily at midnight:
-```php
-$schedule->command('coupons:expire')->daily();
-```
-- [ ] Test command manually
-- [ ] Write unit test for command
-- [ ] Document cron setup for production
-
-**Acceptance Criteria:**
-- Command runs without errors
-- Expired coupons are marked correctly
-- Command logs output
-- Can be run manually
-- Scheduled task configured
-
-**Story Points:** 3
-
----
-
-### User Story 3.6: Navigation & UI Polish
+### User Story 3.5: Navigation & UI Polish
 **As a** staff member  
 **I want** consistent, intuitive UI  
 **So that** the app is pleasant to use
@@ -914,7 +880,7 @@ $schedule->command('coupons:expire')->daily();
 
 ---
 
-### User Story 3.7: Performance Optimization
+### User Story 3.6: Performance Optimization
 **As a** developer  
 **I want** fast page loads  
 **So that** staff can work efficiently
@@ -953,7 +919,7 @@ $schedule->command('coupons:expire')->daily();
 
 ---
 
-### User Story 3.8: Testing & Bug Fixes
+### User Story 3.7: Testing & Bug Fixes
 **As a** developer  
 **I want** a stable, bug-free system  
 **So that** users have a smooth experience
