@@ -665,35 +665,45 @@ coupon_validations
 
 ## **SPRINT 3: Reports, Search & Polish** (1 week)
 
-### User Story 3.1: Advanced Coupon Search
+### User Story 3.1: Advanced Coupon Search ✅ COMPLETED
 **As a** staff member  
 **I want** better search capabilities  
 **So that** I can find coupons by customer info
 
 **Tasks:**
-- [ ] Enhance search in coupons/index to search across:
+- [x] Enhance search in coupons/index to search across:
   - Coupon code
   - Customer name
   - Customer phone
   - Coupon type
-- [ ] Add "Advanced Search" collapsible section:
+- [x] Add "Advanced Search" collapsible section:
   - Customer name field
   - Customer phone field
   - Coupon type field
   - Status multi-select
   - Date range (created between)
   - Date range (expires between)
-- [ ] Implement query builder with all filters
-- [ ] Show active filters as badges
-- [ ] Add "Clear Filters" button
-- [ ] Save search params in URL (for bookmarking)
+- [x] Implement query builder with all filters
+- [x] Show active filters as badges
+- [x] Add "Clear Filters" button
+- [x] Save search params in URL (for bookmarking)
+
+**Implementation Notes:**
+- Enhanced basic search to include coupon type
+- Added collapsible advanced search section using shadcn/ui Collapsible component
+- Implemented multi-select status filter with checkboxes
+- Added individual filter fields for customer name, phone, and coupon type
+- Added expires_at date range filter
+- Active filters displayed as removable badges
+- All filters preserved in URL query parameters via `withQueryString()`
+- Backend controller handles all filter combinations efficiently
 
 **Acceptance Criteria:**
-- Can search by any customer field
-- Multiple filters work together
-- Search is fast (< 1 second)
-- URL reflects current filters
-- Clear filters works
+- ✅ Can search by any customer field
+- ✅ Multiple filters work together
+- ✅ Search is fast (< 1 second)
+- ✅ URL reflects current filters
+- ✅ Clear filters works
 
 **Story Points:** 5
 
