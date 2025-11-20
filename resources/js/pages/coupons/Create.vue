@@ -80,14 +80,14 @@ const breadcrumbs = [
     <Head title="Buat Kupon Baru" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
             <!-- Header -->
             <PageHeader
                 title="Buat Kupon Baru"
                 description="Isi informasi kupon dan pelanggan di bawah ini"
             />
 
-            <form @submit.prevent="submit" class="space-y-6">
+            <form @submit.prevent="submit" class="space-y-4 sm:space-y-6">
                 <!-- Customer Info Section -->
                 <Card class="border rounded-xl">
                     <CardHeader class="pb-4">
@@ -99,7 +99,7 @@ const breadcrumbs = [
                             Data pelanggan yang akan menerima kupon
                         </CardDescription>
                     </CardHeader>
-                    <CardContent class="space-y-4">
+                    <CardContent class="space-y-4 sm:space-y-6">
                         <div class="space-y-2">
                             <Label for="customer_name" class="text-sm font-medium">
                                 Nama Pelanggan <span class="text-destructive">*</span>
@@ -188,7 +188,7 @@ const breadcrumbs = [
                             Detail kupon yang akan diberikan
                         </CardDescription>
                     </CardHeader>
-                    <CardContent class="space-y-4">
+                    <CardContent class="space-y-4 sm:space-y-6">
                         <div class="space-y-2">
                             <Label for="type" class="text-sm font-medium">
                                 Jenis Kupon <span class="text-destructive">*</span>
@@ -259,30 +259,33 @@ const breadcrumbs = [
                             <p v-if="form.errors.expires_at" class="text-sm text-destructive">
                                 {{ form.errors.expires_at }}
                             </p>
+                            <p v-else class="text-xs text-muted-foreground mt-1">
+                                Pilih tanggal kedaluwarsa kupon
+                            </p>
                         </div>
                     </CardContent>
                 </Card>
 
                 <!-- Action Buttons -->
-                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="lg"
-                        class="h-11 w-full rounded-xl sm:w-auto"
-                        @click="$inertia.visit('/coupons')"
-                    >
-                        Batal
-                    </Button>
+                <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
                     <Button
                         type="submit"
                         size="lg"
                         :disabled="form.processing"
-                        class="h-11 w-full gap-2 rounded-xl sm:w-auto"
+                        class="h-12 w-full gap-2 rounded-xl shadow-lg active:scale-[0.98] transition-transform sm:w-auto sm:h-11"
                     >
                         <Plus class="h-4 w-4" />
                         <span v-if="form.processing">Membuat...</span>
                         <span v-else>Buat Kupon</span>
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        class="h-11 w-full rounded-xl active:scale-[0.98] transition-transform sm:w-auto"
+                        @click="$inertia.visit('/coupons')"
+                    >
+                        Batal
                     </Button>
                 </div>
             </form>

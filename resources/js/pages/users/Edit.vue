@@ -58,7 +58,7 @@ const breadcrumbs = [
     <Head title="Edit User" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
             <!-- Header -->
             <PageHeader
                 title="Edit User"
@@ -93,7 +93,7 @@ const breadcrumbs = [
                                 placeholder="Masukkan nama lengkap"
                                 required
                                 autocomplete="name"
-                                class="rounded-xl"
+                                class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                                 :class="{ 'border-destructive': form.errors.name }"
                             />
                             <InputError :message="form.errors.name" />
@@ -114,6 +114,7 @@ const breadcrumbs = [
                                 placeholder="user@example.com"
                                 required
                                 autocomplete="email"
+                                class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                                 :class="{ 'border-destructive': form.errors.email }"
                             />
                             <InputError :message="form.errors.email" />
@@ -133,16 +134,17 @@ const breadcrumbs = [
                                 type="password"
                                 placeholder="Kosongkan jika tidak ingin mengubah password"
                                 autocomplete="new-password"
+                                class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                                 :class="{ 'border-destructive': form.errors.password }"
                             />
                             <p class="text-xs text-muted-foreground">
-                                Biarkan kosong jika tidak ingin mengubah password
+                                Biarkan kosong jika tidak ingin mengubah password. Minimal 8 karakter jika diisi.
                             </p>
                             <InputError :message="form.errors.password" />
                         </div>
 
                         <!-- Password Confirmation (if password is filled) -->
-                        <div v-if="form.password" class="space-y-2">
+                        <div v-if="form.password" class="space-y-2 animate-in fade-in slide-in-from-top-2">
                             <Label for="password_confirmation">
                                 <div class="flex items-center gap-2">
                                     <Lock class="h-4 w-4" />
@@ -155,6 +157,7 @@ const breadcrumbs = [
                                 type="password"
                                 placeholder="Ulangi password baru"
                                 autocomplete="new-password"
+                                class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                                 :class="{ 'border-destructive': form.errors.password_confirmation }"
                             />
                             <InputError :message="form.errors.password_confirmation" />
@@ -172,7 +175,7 @@ const breadcrumbs = [
                                 <DropdownMenuTrigger as-child>
                                     <Button
                                         variant="outline"
-                                        class="w-full justify-between"
+                                        class="w-full h-11 justify-between rounded-xl active:scale-[0.98] transition-transform"
                                         :class="{ 'border-destructive': form.errors.role }"
                                     >
                                         {{ form.role === 'admin' ? 'Admin' : 'User' }}
@@ -198,18 +201,23 @@ const breadcrumbs = [
                         </div>
 
                         <!-- Actions -->
-                        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                            <Button
+                                type="submit"
+                                :disabled="form.processing"
+                                size="lg"
+                                class="h-12 w-full gap-2 rounded-xl shadow-lg active:scale-[0.98] transition-transform sm:w-auto sm:h-11"
+                            >
+                                {{ form.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
+                            </Button>
                             <Button
                                 type="button"
                                 variant="outline"
                                 as-child
                                 size="lg"
-                                class="rounded-xl"
+                                class="h-11 w-full rounded-xl active:scale-[0.98] transition-transform sm:w-auto"
                             >
                                 <a href="/users">Batal</a>
-                            </Button>
-                            <Button type="submit" :disabled="form.processing" size="lg" class="rounded-xl">
-                                {{ form.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
                             </Button>
                         </div>
                     </form>

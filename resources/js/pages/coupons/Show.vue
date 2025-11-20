@@ -243,14 +243,14 @@ const breadcrumbs = [
     <Head :title="`Kupon ${coupon.code}`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
             <!-- Header -->
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-4">
                     <Button
                         variant="ghost"
                         size="icon"
-                        class="h-10 w-10 rounded-xl"
+                        class="h-10 w-10 rounded-xl active:scale-[0.98] transition-transform"
                         @click="$inertia.visit('/coupons')"
                     >
                         <ArrowLeft class="h-5 w-5" />
@@ -264,31 +264,31 @@ const breadcrumbs = [
                     <Button
                         variant="outline"
                         size="lg"
-                        class="h-11 gap-2 rounded-xl"
+                        class="h-11 flex-1 gap-2 rounded-xl min-w-[120px] active:scale-[0.98] transition-transform sm:flex-initial"
                         :disabled="isCopying"
                         @click="copyToClipboard"
                     >
                         <Copy class="h-4 w-4" />
-                        <span class="hidden sm:inline">{{ isCopying ? 'Menyalin...' : 'Salin Link' }}</span>
+                        <span class="text-sm">{{ isCopying ? 'Menyalin...' : 'Salin Link' }}</span>
                     </Button>
                     <Button
                         v-if="coupon.status === 'used'"
                         variant="outline"
                         size="lg"
-                        class="h-11 gap-2 rounded-xl border-orange-500 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
+                        class="h-11 flex-1 gap-2 rounded-xl border-orange-500 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 min-w-[120px] active:scale-[0.98] transition-transform sm:flex-initial"
                         @click="openReversalModal"
                     >
                         <RotateCcw class="h-4 w-4" />
-                        <span class="hidden sm:inline">Batalkan Penggunaan</span>
+                        <span class="text-sm">Batalkan</span>
                     </Button>
                     <Button
                         variant="destructive"
                         size="lg"
-                        class="h-11 gap-2 rounded-xl"
+                        class="h-11 flex-1 gap-2 rounded-xl min-w-[120px] active:scale-[0.98] transition-transform sm:flex-initial"
                         @click="deleteCoupon"
                     >
                         <Trash2 class="h-4 w-4" />
-                        <span class="hidden sm:inline">Hapus</span>
+                        <span class="text-sm">Hapus</span>
                     </Button>
                 </div>
             </div>
@@ -303,9 +303,45 @@ const breadcrumbs = [
                 <AlertDescription>{{ flashError }}</AlertDescription>
             </Alert>
 
-            <div class="grid gap-6 lg:grid-cols-3">
+            <div class="grid gap-4 sm:gap-6 lg:grid-cols-3">
+                <!-- QR Code - Show first on mobile, sidebar on desktop -->
+                <div class="space-y-6 order-first lg:order-last">
+                    <Card class="border rounded-xl sticky top-4">
+                        <CardHeader class="pb-4">
+                            <div class="flex items-center gap-2">
+                                <QrCode class="h-5 w-5 text-primary" />
+                                <CardTitle class="text-base sm:text-lg font-semibold">QR Code</CardTitle>
+                            </div>
+                            <CardDescription class="text-sm mt-1">
+                                Scan untuk melihat kupon
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent class="flex flex-col items-center space-y-4">
+                            <div
+                                v-if="qrCodeDataUrl"
+                                class="rounded-xl border-2 border-dashed p-4 sm:p-6 bg-white dark:bg-gray-900"
+                            >
+                                <img
+                                    :src="qrCodeDataUrl"
+                                    alt="QR Code"
+                                    class="h-auto w-full max-w-[240px] sm:max-w-[280px] md:max-w-[320px]"
+                                />
+                            </div>
+                            <div v-else class="flex h-[250px] w-full items-center justify-center rounded-xl border-2 border-dashed">
+                                <p class="text-sm text-muted-foreground">Memuat QR Code...</p>
+                            </div>
+                            <div class="w-full text-center">
+                                <p class="font-mono text-sm font-bold">{{ coupon.code }}</p>
+                                <p class="mt-1 text-xs text-muted-foreground">
+                                    Kode Kupon
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
                 <!-- Main Content -->
-                <div class="space-y-6 lg:col-span-2">
+                <div class="space-y-4 sm:space-y-6 lg:col-span-2 order-last lg:order-first">
                     <!-- Coupon Info Card -->
                     <Card class="border rounded-xl">
                         <CardHeader class="pb-4">
@@ -366,37 +402,37 @@ const breadcrumbs = [
                         <CardHeader class="pb-4">
                             <div class="flex items-center gap-2">
                                 <User class="h-5 w-5 text-primary" />
-                                <CardTitle class="text-lg font-semibold">Informasi Pelanggan</CardTitle>
+                                <CardTitle class="text-base sm:text-lg font-semibold">Informasi Pelanggan</CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent class="space-y-4">
-                            <div>
+                            <div class="space-y-2">
                                 <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                    <User class="h-4 w-4" />
-                                    Nama
+                                    <User class="h-4 w-4 flex-shrink-0" />
+                                    <span>Nama</span>
                                 </div>
-                                <p class="mt-1 text-base font-medium">{{ coupon.customer_name }}</p>
+                                <p class="mt-1 text-base font-medium pl-6">{{ coupon.customer_name }}</p>
                             </div>
-                            <div>
+                            <div class="space-y-2">
                                 <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                    <Phone class="h-4 w-4" />
-                                    Telepon
+                                    <Phone class="h-4 w-4 flex-shrink-0" />
+                                    <span>Telepon</span>
                                 </div>
-                                <p class="mt-1 text-base">{{ coupon.formatted_phone || coupon.customer_phone }}</p>
+                                <p class="mt-1 text-base pl-6">{{ coupon.formatted_phone || coupon.customer_phone }}</p>
                             </div>
-                            <div v-if="coupon.customer_email">
+                            <div v-if="coupon.customer_email" class="space-y-2">
                                 <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                    <Mail class="h-4 w-4" />
-                                    Email
+                                    <Mail class="h-4 w-4 flex-shrink-0" />
+                                    <span>Email</span>
                                 </div>
-                                <p class="mt-1 text-base">{{ coupon.customer_email }}</p>
+                                <p class="mt-1 text-base pl-6">{{ coupon.customer_email }}</p>
                             </div>
-                            <div v-if="coupon.customer_social_media">
+                            <div v-if="coupon.customer_social_media" class="space-y-2">
                                 <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                    <LinkIcon class="h-4 w-4" />
-                                    Media Sosial
+                                    <LinkIcon class="h-4 w-4 flex-shrink-0" />
+                                    <span>Media Sosial</span>
                                 </div>
-                                <p class="mt-1 text-base">{{ coupon.customer_social_media }}</p>
+                                <p class="mt-1 text-base pl-6">{{ coupon.customer_social_media }}</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -414,7 +450,7 @@ const breadcrumbs = [
                                 <div
                                     v-for="validation in coupon.validations"
                                     :key="validation.id"
-                                    class="flex items-start gap-4 rounded-xl border p-4 transition-all duration-200 hover:bg-muted/50 hover:shadow-sm"
+                                    class="flex items-start gap-3 sm:gap-4 rounded-xl border p-3 sm:p-4 transition-all duration-200 hover:bg-muted/50 active:bg-muted/50 active:scale-[0.98]"
                                 >
                                     <div
                                         :class="[
@@ -465,42 +501,6 @@ const breadcrumbs = [
                                         </p>
                                     </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <!-- Sidebar: QR Code -->
-                <div class="space-y-6">
-                    <Card class="border rounded-xl">
-                        <CardHeader class="pb-4">
-                            <div class="flex items-center gap-2">
-                                <QrCode class="h-5 w-5 text-primary" />
-                                <CardTitle class="text-lg font-semibold">QR Code</CardTitle>
-                            </div>
-                            <CardDescription class="text-sm mt-1">
-                                Scan untuk melihat kupon
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent class="flex flex-col items-center space-y-4">
-                            <div
-                                v-if="qrCodeDataUrl"
-                                class="rounded-xl border-2 border-dashed p-4 bg-white dark:bg-gray-900"
-                            >
-                                <img
-                                    :src="qrCodeDataUrl"
-                                    alt="QR Code"
-                                    class="h-auto w-full max-w-[250px]"
-                                />
-                            </div>
-                            <div v-else class="flex h-[250px] w-full items-center justify-center rounded-xl border-2 border-dashed">
-                                <p class="text-sm text-muted-foreground">Memuat QR Code...</p>
-                            </div>
-                            <div class="w-full text-center">
-                                <p class="font-mono text-sm font-bold">{{ coupon.code }}</p>
-                                <p class="mt-1 text-xs text-muted-foreground">
-                                    Kode Kupon
-                                </p>
                             </div>
                         </CardContent>
                     </Card>

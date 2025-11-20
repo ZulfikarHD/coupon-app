@@ -25,7 +25,7 @@ const breadcrumbItems: BreadcrumbItem[] = [
         <Head title="Password settings" />
 
         <SettingsLayout>
-            <div class="space-y-6">
+            <div class="space-y-6 p-4 md:p-0">
                 <PageHeader
                     title="Update password"
                     description="Ensure your account is using a long, random password to stay secure"
@@ -46,12 +46,12 @@ const breadcrumbItems: BreadcrumbItem[] = [
                     v-slot="{ errors, processing, recentlySuccessful }"
                 >
                     <div class="grid gap-2">
-                        <Label for="current_password">Current password</Label>
+                        <Label for="current_password" class="text-sm font-medium">Current password</Label>
                         <Input
                             id="current_password"
                             name="current_password"
                             type="password"
-                            class="mt-1 block w-full"
+                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                             autocomplete="current-password"
                             placeholder="Current password"
                         />
@@ -59,39 +59,42 @@ const breadcrumbItems: BreadcrumbItem[] = [
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="password">New password</Label>
+                        <Label for="password" class="text-sm font-medium">New password</Label>
                         <Input
                             id="password"
                             name="password"
                             type="password"
-                            class="mt-1 block w-full"
+                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                             autocomplete="new-password"
                             placeholder="New password"
                         />
                         <InputError :message="errors.password" />
+                        <p class="text-xs text-muted-foreground">
+                            Gunakan kombinasi huruf, angka, dan karakter khusus
+                        </p>
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="password_confirmation"
-                            >Confirm password</Label
-                        >
+                        <Label for="password_confirmation" class="text-sm font-medium">Confirm password</Label>
                         <Input
                             id="password_confirmation"
                             name="password_confirmation"
                             type="password"
-                            class="mt-1 block w-full"
+                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                             autocomplete="new-password"
                             placeholder="Confirm password"
                         />
                         <InputError :message="errors.password_confirmation" />
                     </div>
 
-                    <div class="flex items-center gap-4">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                         <Button
                             :disabled="processing"
                             data-test="update-password-button"
-                            >Save password</Button
+                            class="h-11 w-full sm:w-auto rounded-xl active:scale-[0.98] transition-transform"
                         >
+                            {{ processing ? 'Saving...' : 'Save password' }}
+                        </Button>
 
                         <Transition
                             enter-active-class="transition ease-in-out"
@@ -101,7 +104,7 @@ const breadcrumbItems: BreadcrumbItem[] = [
                         >
                             <p
                                 v-show="recentlySuccessful"
-                                class="text-sm text-neutral-600"
+                                class="text-sm text-green-600 font-medium"
                             >
                                 Saved.
                             </p>
