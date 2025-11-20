@@ -300,7 +300,6 @@ public function getFormattedPhoneAttribute() {
   - Coupon type (large heading)
   - Description (readable text)
   - QR code (large, centered)
-  - Barcode (using jsbarcode library)
   - Customer name only (privacy - no phone/email)
   - Expiration date (if set)
   - Status display:

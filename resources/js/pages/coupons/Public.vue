@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { QrCode, CheckCircle2, XCircle, Clock, Sparkles, Gift, Star } from 'lucide-vue-next';
 import { onMounted, ref, computed } from 'vue';
 import QRCode from 'qrcode';
-import JsBarcode from 'jsbarcode';
 
 interface Coupon {
     id: number;
@@ -30,7 +29,6 @@ interface Props {
 const props = defineProps<Props>();
 
 const qrCodeDataUrl = ref('');
-const barcodeSvg = ref('');
 const publicUrl = window.location.href;
 
 // Get validated_at from the first 'used' validation
@@ -81,22 +79,6 @@ onMounted(async () => {
         });
     } catch (err) {
         console.error('Failed to generate QR code:', err);
-    }
-
-    // Generate Barcode
-    try {
-        const canvas = document.createElement('canvas');
-        JsBarcode(canvas, props.coupon.code, {
-            format: 'CODE128',
-            width: 2,
-            height: 80,
-            displayValue: true,
-            fontSize: 16,
-            margin: 10,
-        });
-        barcodeSvg.value = canvas.toDataURL('image/png');
-    } catch (err) {
-        console.error('Failed to generate barcode:', err);
     }
 });
 </script>
@@ -195,20 +177,6 @@ onMounted(async () => {
                                     <QrCode class="h-12 w-12 mx-auto mb-2 text-muted-foreground animate-pulse" />
                                     <p class="text-sm text-muted-foreground">Memuat QR Code...</p>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Barcode Section -->
-                        <div v-if="barcodeSvg" class="w-full flex flex-col items-center space-y-2">
-                            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                Barcode
-                            </p>
-                            <div class="w-full max-w-[320px] rounded-lg border-2 border-dashed border-primary/30 p-4 bg-white dark:bg-gray-900">
-                                <img
-                                    :src="barcodeSvg"
-                                    alt="Barcode"
-                                    class="h-auto w-full"
-                                />
                             </div>
                         </div>
                         
