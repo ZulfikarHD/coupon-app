@@ -407,6 +407,7 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                     type="date"
                                     :disabled="isLoading"
                                     class="w-full rounded-xl"
+                                    @change="form.top_types_page = 1; form.customers_page = 1; applyFilters()"
                                 />
                             </div>
                             <div class="flex-1 space-y-2">
@@ -416,19 +417,11 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                     v-model="form.date_to"
                                     type="date"
                                     :disabled="isLoading"
-                                    class="w-full"
+                                    class="w-full rounded-xl"
+                                    @change="form.top_types_page = 1; form.customers_page = 1; applyFilters()"
                                 />
                             </div>
                             <div class="flex gap-2">
-                                <Button
-                                    type="submit"
-                                    :disabled="isLoading"
-                                    class="gap-2 rounded-xl"
-                                >
-                                    <Loader2 v-if="isLoading" class="h-4 w-4 animate-spin" />
-                                    <BarChart3 v-else class="h-4 w-4" />
-                                    {{ isLoading ? 'Memuat...' : 'Terapkan' }}
-                                </Button>
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -439,6 +432,10 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                     Reset
                                 </Button>
                             </div>
+                        </div>
+                        <div v-if="isLoading" class="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 class="h-4 w-4 animate-spin" />
+                            <span>Memuat data...</span>
                         </div>
                     </form>
                 </CardContent>
