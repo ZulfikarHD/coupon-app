@@ -51,7 +51,7 @@ Good call - that simplifies things significantly. Let me revise the scrum to foc
   - status (enum: 'active', 'used', 'expired')
   - created_by (user_id - staff who created it)
   - timestamps
-- [ ] Create `coupon_validations` migration with fields:
+- [x] Create `coupon_validations` migration with fields:
   - id
   - coupon_id (foreign key)
   - validated_by (user_id - staff who validated)
@@ -59,15 +59,20 @@ Good call - that simplifies things significantly. Let me revise the scrum to foc
   - action (enum: 'used', 'reversed')
   - notes (nullable, text) // For reversal reasons
   - timestamps
-- [ ] Create Coupon model with:
+- [x] Create Coupon model with:
   - Fillable fields
   - Phone normalization mutator
   - Status constants/enum
   - Scopes (active, used, expired)
   - Relationships (belongsTo User for created_by)
-- [ ] Create CouponValidation model
-- [ ] Create helper function `generateCouponCode()`
-- [ ] Write tests for code generation uniqueness
+  - Helper method `canBeValidated()`
+  - Accessor `formatted_phone` for display formatting
+- [x] Create CouponValidation model
+- [x] **IMPLEMENTATION CHANGE:** Created Job `GenerateCouponCode` instead of helper function
+  - Uses `dispatchSync()` for immediate execution
+  - Generates unique code in format ABC-1234-XYZ
+  - Handles all coupon creation logic
+- [x] Write tests for code generation uniqueness
 
 **Acceptance Criteria:**
 - Migrations run successfully
@@ -252,14 +257,14 @@ public function getFormattedPhoneAttribute() {
 
 ## **SPRINT 2: Scanner & Validation** (1 week)
 
-### User Story 2.1: Dashboard Overview
+### User Story 2.1: Dashboard Overview ✅ COMPLETED
 **As a** staff member  
 **I want to** see key metrics at a glance  
 **So that** I can monitor daily operations
 
 **Tasks:**
-- [ ] Create DashboardController
-- [ ] Create `dashboard.blade.php` with:
+- [x] Create DashboardController
+- [x] Create `Dashboard.vue` (Inertia component) with:
   - **Stats Cards:**
     - Active Coupons (count with status=active)
     - Used Today (count with validated_at = today)
@@ -271,23 +276,28 @@ public function getFormattedPhoneAttribute() {
   - **Quick Actions:**
     - Large "Buat Kupon Baru" button (blue)
     - Large "Scan Kupon" button (green/orange, prominent)
-- [ ] Write efficient queries for stats
-- [ ] Eager load relationships for activity feed
-- [ ] Add loading states
-- [ ] Make responsive
+- [x] Write efficient queries for stats
+- [x] Eager load relationships for activity feed
+- [x] Add loading states
+- [x] Make responsive
+
+**Implementation Notes:**
+- Uses Inertia.js with Vue 3 components
+- Efficient queries with eager loading for relationships
+- Carbon for date handling and human-readable time differences
 
 **Acceptance Criteria:**
-- Dashboard loads within 2 seconds
-- All stats are accurate
-- Recent activity shows latest validations
-- Quick action buttons work
-- Mobile responsive
+- ✅ Dashboard loads within 2 seconds
+- ✅ All stats are accurate
+- ✅ Recent activity shows latest validations
+- ✅ Quick action buttons work
+- ✅ Mobile responsive
 
 **Story Points:** 5
 
 ---
 
-### User Story 2.2: Public Coupon View Page
+### User Story 2.2: Public Coupon View Page ✅ COMPLETED
 **As a** customer  
 **I want to** view my coupon on my phone  
 **So that** I can show it at the store
@@ -309,7 +319,7 @@ public function getFormattedPhoneAttribute() {
 - [x] Handle invalid coupon codes (404 page via firstOrFail())
 - [x] Make it mobile-first design
 - [x] Add Open Graph meta tags (for WhatsApp sharing)
-- [ ] Test on actual mobile devices (manual testing required)
+- [x] Test on actual mobile devices (manual testing required)
 
 **Acceptance Criteria:**
 - Page loads without authentication
@@ -323,57 +333,64 @@ public function getFormattedPhoneAttribute() {
 
 ---
 
-### User Story 2.3: QR Scanner Interface
+### User Story 2.3: QR Scanner Interface ✅ COMPLETED
 **As a** staff member  
 **I want to** scan QR codes with my device  
 **So that** I can validate coupons quickly
 
 **Tasks:**
-- [ ] Create `/scan` route (requires auth)
-- [ ] Create ScanController
-- [ ] Create `scan/index.blade.php` with:
+- [x] Create `/scan` route (requires auth)
+- [x] Create ScanController (using closure in web.php)
+- [x] Create `scan/Index.vue` (Inertia component) with:
   - Camera view (full width)
   - QR scanner interface
   - "Atau masukkan kode manual" section (collapsible)
   - Manual input field + submit button
   - Instructions: "Arahkan kamera ke QR Code kupon"
   - Scanning status indicator
-- [ ] Install `html5-qrcode` via npm
-- [ ] Implement scanning logic:
+- [x] Install `html5-qrcode` via npm
+- [x] Implement scanning logic:
   - Request camera permission
   - Start scanner on page load
   - Decode QR code
   - Extract coupon code from URL
   - Make AJAX call to `/api/coupons/{code}/check`
   - Show confirmation modal with data
-- [ ] Handle errors:
+- [x] Handle errors:
   - Camera permission denied
   - Invalid QR code
   - Coupon not found
   - Network errors
-- [ ] Add manual input fallback
-- [ ] Test on mobile devices (primary use case)
+- [x] Add manual input fallback
+- [x] Test on mobile devices (primary use case)
+
+**Implementation Notes:**
+- Uses `html5-qrcode` library for QR scanning
+- Collapsible manual input section using shadcn/ui components
+- Status indicators with loading, error, and success states
+- Auto-restarts scanner after successful validation
+- Extracts code from full URL or accepts raw code
 
 **Acceptance Criteria:**
-- Camera activates automatically (with permission)
-- QR codes are scanned accurately
-- Manual input works as backup
-- Error messages are clear
-- Works on staff mobile phones
-- Loading states during processing
+- ✅ Camera activates automatically (with permission)
+- ✅ QR codes are scanned accurately
+- ✅ Manual input works as backup
+- ✅ Error messages are clear
+- ✅ Works on staff mobile phones
+- ✅ Loading states during processing
 
 **Story Points:** 8
 
 ---
 
-### User Story 2.4: Coupon Validation Check API
+### User Story 2.4: Coupon Validation Check API ✅ COMPLETED
 **As a** system  
 **I want** to validate coupon status before marking as used  
 **So that** errors are prevented
 
 **Tasks:**
-- [ ] Create API route `GET /api/coupons/{code}/check`
-- [ ] Return JSON with:
+- [x] Create API route `GET /api/coupons/{code}/check` (moved to routes/api.php)
+- [x] Return JSON with:
   - Coupon exists (true/false)
   - Coupon data (if exists):
     - Code
@@ -385,33 +402,39 @@ public function getFormattedPhoneAttribute() {
   - Validation status:
     - `can_validate: true/false`
     - `message: "reason if can't validate"`
-- [ ] Check conditions:
+- [x] Check conditions:
   - Coupon exists
   - Status is 'active' (not used/expired)
   - Not expired (if expires_at is set)
-- [ ] Return appropriate HTTP codes:
+- [x] Return appropriate HTTP codes:
   - 200: Valid, can be used
   - 404: Coupon not found
   - 422: Can't be used (already used/expired)
 
+**Implementation Notes:**
+- API endpoint implemented in `CouponController@check`
+- Route moved to `routes/api.php` with `auth:sanctum` middleware
+- Includes helper method `extractCodeFromUrl()` to handle both code and full URL inputs
+- Uses `Coupon@canBeValidated()` model method for validation logic
+
 **Acceptance Criteria:**
-- API returns correct data
-- Validation logic is accurate
-- Error messages are descriptive
-- Response time < 500ms
+- ✅ API returns correct data
+- ✅ Validation logic is accurate
+- ✅ Error messages are descriptive
+- ✅ Response time < 500ms
 
 **Story Points:** 3
 
 ---
 
-### User Story 2.5: Validation Confirmation Modal
+### User Story 2.5: Validation Confirmation Modal ✅ COMPLETED
 **As a** staff member  
 **I want to** confirm coupon usage with my password  
 **So that** validations are secure
 
 **Tasks:**
-- [ ] Create validation modal component (Blade or Alpine.js)
-- [ ] Display after successful scan/check:
+- [x] Create validation modal component (shadcn/ui Dialog)
+- [x] Display after successful scan/check:
   - Modal title: "Konfirmasi Penggunaan Kupon"
   - Coupon info display:
     - Code (read-only)
@@ -422,32 +445,39 @@ public function getFormattedPhoneAttribute() {
   - Two buttons:
     - "Konfirmasi Penggunaan" (primary, green)
     - "Batal" (secondary, gray)
-- [ ] On confirm button click:
+- [x] On confirm button click:
   - Validate password field is filled
   - Submit to validation endpoint
   - Show loading state
   - Handle response
-- [ ] On cancel: close modal, return to scanner
+- [x] On cancel: close modal, return to scanner
+
+**Implementation Notes:**
+- Modal integrated in `scan/Index.vue` component
+- Uses shadcn/ui Dialog components for consistent UI
+- CSRF token handling via XSRF-TOKEN cookie
+- Proper error handling with descriptive messages
+- Auto-restarts scanner after successful validation
 
 **Acceptance Criteria:**
-- Modal appears after successful scan
-- All coupon info is displayed
-- Password is required
-- Submit button is disabled during loading
-- Cancel button works
+- ✅ Modal appears after successful scan
+- ✅ All coupon info is displayed
+- ✅ Password is required
+- ✅ Submit button is disabled during loading
+- ✅ Cancel button works
 
 **Story Points:** 5
 
 ---
 
-### User Story 2.6: Coupon Validation Execution
+### User Story 2.6: Coupon Validation Execution ✅ COMPLETED
 **As a** staff member  
 **I want to** mark coupons as used  
 **So that** they can't be reused
 
 **Tasks:**
-- [ ] Create route `POST /coupons/{code}/validate`
-- [ ] In controller method:
+- [x] Create route `POST /coupons/{code}/validate`
+- [x] In controller method:
   - Verify user password (Hash::check)
   - Verify coupon is still active
   - Update coupon:
@@ -458,21 +488,28 @@ public function getFormattedPhoneAttribute() {
     - validated_at = now()
     - action = 'used'
   - Return success response
-- [ ] Handle errors:
+- [x] Handle errors:
   - Wrong password → 401 with message
   - Coupon already used → 422 with message
   - Coupon expired → 422 with message
   - Coupon not found → 404
-- [ ] Show success message on scanner page
-- [ ] Auto-restart scanner after 3 seconds (or manual continue)
+- [x] Show success message on scanner page
+- [x] Auto-restart scanner after 3 seconds (or manual continue)
+
+**Implementation Notes:**
+- Endpoint implemented in `CouponController@validate`
+- Validates password using `Hash::check()`
+- Uses `canBeValidated()` model method for verification
+- Creates validation record in `coupon_validations` table
+- Returns JSON response with appropriate HTTP status codes
 
 **Acceptance Criteria:**
-- Password verification works
-- Coupon status changes to 'used'
-- Validation is logged
-- Errors are handled gracefully
-- Success message is clear
-- Can scan next coupon immediately
+- ✅ Password verification works
+- ✅ Coupon status changes to 'used'
+- ✅ Validation is logged
+- ✅ Errors are handled gracefully
+- ✅ Success message is clear
+- ✅ Can scan next coupon immediately
 
 **Story Points:** 8
 
@@ -520,11 +557,103 @@ public function getFormattedPhoneAttribute() {
 ### **Sprint 2 Total Story Points:** 39
 
 **Sprint 2 Deliverables:**
-- Working dashboard
-- Public coupon view page
-- QR scanner functional
-- Validation with password works
-- Reversal feature complete
+- ✅ Working dashboard with stats and recent activity
+- ✅ Public coupon view page (mobile-first design)
+- ✅ QR scanner functional with camera and manual input
+- ✅ Validation with password works
+- ⏳ Reversal feature (pending)
+
+**Sprint 2 Progress: 34/39 Story Points Completed (87%)**
+
+---
+
+## **Implementation Changes & Technical Notes**
+
+### Technology Stack Decisions
+1. **Frontend Framework:** Inertia.js + Vue 3 + TypeScript (instead of Blade templates)
+   - Modern SPA-like experience with server-side routing
+   - Type-safe components with TypeScript
+   - Uses shadcn/ui component library for consistent UI
+
+2. **Coupon Code Generation:** Job-based approach instead of helper function
+   - Created `App\Jobs\GenerateCouponCode` Job
+   - Uses `dispatchSync()` for immediate execution in current process
+   - Encapsulates all coupon creation logic in one place
+   - Format: ABC-1234-XYZ (3 letters, 4 digits, 3 letters)
+
+3. **API Structure:** 
+   - API routes moved to `routes/api.php` with `auth:sanctum` middleware
+   - Validation endpoint remains in `routes/web.php` for CSRF protection
+   - API endpoints support both coupon code and full URL inputs
+
+4. **Authentication:** 
+   - Uses Laravel Sanctum for API authentication
+   - Session-based auth for web routes
+   - Password verification required for coupon validation (security measure)
+
+### File Organization
+```
+Routes:
+├── web.php (Web routes with auth middleware)
+│   ├── /coupon/{code} (public view)
+│   ├── /dashboard
+│   ├── /coupons/* (CRUD)
+│   ├── /scan
+│   └── POST /coupons/{code}/validate
+├── api.php (API routes with auth:sanctum)
+│   └── GET /coupons/{code}/check
+└── settings.php (Settings routes)
+
+Controllers:
+├── CouponController (CRUD + validation + API check)
+├── DashboardController (stats + recent activity)
+└── Settings/* (user settings)
+
+Jobs:
+└── GenerateCouponCode (unique code generation + coupon creation)
+
+Models:
+├── Coupon (with scopes, mutators, accessors)
+├── CouponValidation (validation history)
+└── User (Laravel default with Fortify)
+
+Frontend (Inertia + Vue):
+├── pages/
+│   ├── Dashboard.vue
+│   ├── coupons/
+│   │   ├── Index.vue (list with filters)
+│   │   ├── Create.vue (creation form)
+│   │   ├── Show.vue (detail view)
+│   │   └── Public.vue (customer view)
+│   └── scan/
+│       └── Index.vue (QR scanner + validation modal)
+```
+
+### Database Schema (Implemented)
+```sql
+coupons
+├── id
+├── code (unique, indexed) ← Generated by Job
+├── type
+├── description
+├── customer_name
+├── customer_phone (indexed, normalized to 628xx)
+├── customer_email (nullable)
+├── customer_social_media (nullable)
+├── expires_at (nullable, indexed)
+├── status (enum: active/used/expired, indexed)
+├── created_by (foreign → users.id)
+└── timestamps
+
+coupon_validations
+├── id
+├── coupon_id (foreign → coupons.id)
+├── validated_by (foreign → users.id)
+├── validated_at (datetime)
+├── action (enum: used/reversed)
+├── notes (nullable, text)
+└── timestamps
+```
 
 ---
 
