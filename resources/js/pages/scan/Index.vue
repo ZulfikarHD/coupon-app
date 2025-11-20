@@ -323,14 +323,14 @@ onUnmounted(() => {
     <Head title="Scan Kupon" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:p-6">
-            <Card class="border-2">
-                <CardHeader>
+        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
+            <Card class="border rounded-xl">
+                <CardHeader class="pb-4">
                     <div class="flex items-center gap-2">
-                        <ScanLine class="h-6 w-6 text-primary" />
-                        <CardTitle>Scan Kupon</CardTitle>
+                        <ScanLine class="h-5 w-5 text-primary" />
+                        <CardTitle class="text-lg font-semibold">Scan Kupon</CardTitle>
                     </div>
-                    <CardDescription>
+                    <CardDescription class="text-sm mt-1">
                         Arahkan kamera ke QR Code kupon untuk memvalidasi
                     </CardDescription>
                 </CardHeader>
@@ -339,11 +339,11 @@ onUnmounted(() => {
                     <div class="space-y-4">
                         <div
                             :id="scannerId"
-                            class="w-full rounded-lg border-2 border-dashed bg-gray-100 dark:bg-gray-800"
+                            class="w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800"
                             style="min-height: 300px;"
                         ></div>
                         
-                        <div v-if="scanningStatus" class="flex items-center gap-2 rounded-lg border p-3">
+                        <div v-if="scanningStatus" class="flex items-center gap-2 rounded-xl border p-3">
                             <Loader2 v-if="isScanning && !scanningStatus.includes('terdeteksi')" class="h-4 w-4 animate-spin text-primary" />
                             <AlertCircle v-else-if="errorMessage || scanningStatus.includes('tidak')" class="h-4 w-4 text-destructive" />
                             <CheckCircle2 v-else class="h-4 w-4 text-green-600" />
@@ -355,7 +355,7 @@ onUnmounted(() => {
                         <!-- Manual Input Section -->
                         <Collapsible v-model="showManualInput">
                             <CollapsibleTrigger as-child>
-                                <Button variant="outline" class="w-full justify-between">
+                                <Button variant="outline" class="w-full justify-between rounded-xl">
                                     <span>Atau masukkan kode manual</span>
                                     <ChevronDown v-if="!showManualInput" class="h-4 w-4" />
                                     <ChevronUp v-else class="h-4 w-4" />
@@ -369,12 +369,13 @@ onUnmounted(() => {
                                             id="manual-code"
                                             v-model="manualCode"
                                             placeholder="Masukkan kode kupon atau URL"
-                                            class="flex-1"
+                                            class="flex-1 rounded-xl"
                                             @keyup.enter="handleManualSubmit"
                                         />
                                         <Button
                                             @click="handleManualSubmit"
                                             :disabled="isSubmittingManual"
+                                            class="rounded-xl"
                                         >
                                             <Loader2 v-if="isSubmittingManual" class="mr-2 h-4 w-4 animate-spin" />
                                             Cek
@@ -385,13 +386,13 @@ onUnmounted(() => {
                         </Collapsible>
 
                         <!-- Error Message -->
-                        <div v-if="errorMessage" class="flex items-center gap-2 rounded-lg border border-destructive bg-destructive/10 p-3">
+                        <div v-if="errorMessage" class="flex items-center gap-2 rounded-xl border border-destructive bg-destructive/10 p-3">
                             <AlertCircle class="h-4 w-4 text-destructive" />
                             <p class="text-sm text-destructive">{{ errorMessage }}</p>
                         </div>
 
                         <!-- Success Message -->
-                        <div v-if="successMessage" class="flex items-center gap-2 rounded-lg border border-green-500 bg-green-500/10 p-3">
+                        <div v-if="successMessage" class="flex items-center gap-2 rounded-xl border border-green-500 bg-green-500/10 p-3">
                             <CheckCircle2 class="h-4 w-4 text-green-600" />
                             <p class="text-sm text-green-600">{{ successMessage }}</p>
                         </div>
@@ -440,12 +441,13 @@ onUnmounted(() => {
                             type="password"
                             placeholder="Masukkan password Anda"
                             :disabled="isSubmitting"
+                            class="rounded-xl"
                             @keyup.enter="handleValidate"
                         />
                     </div>
 
                     <!-- Error Message -->
-                    <div v-if="errorMessage" class="flex items-center gap-2 rounded-lg border border-destructive bg-destructive/10 p-3">
+                    <div v-if="errorMessage" class="flex items-center gap-2 rounded-xl border border-destructive bg-destructive/10 p-3">
                         <AlertCircle class="h-4 w-4 text-destructive" />
                         <p class="text-sm text-destructive">{{ errorMessage }}</p>
                     </div>
@@ -456,12 +458,14 @@ onUnmounted(() => {
                         variant="outline"
                         @click="handleModalClose"
                         :disabled="isSubmitting"
+                        class="rounded-xl"
                     >
                         Batal
                     </Button>
                     <Button
                         @click="handleValidate"
                         :disabled="isSubmitting || !password.trim()"
+                        class="rounded-xl"
                     >
                         <Loader2 v-if="isSubmitting" class="mr-2 h-4 w-4 animate-spin" />
                         Konfirmasi Penggunaan

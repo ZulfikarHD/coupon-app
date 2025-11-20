@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import { useStatusColors } from '@/composables/useStatusColors';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -85,17 +88,7 @@ const reversalForm = useForm({
     reason: '',
 });
 
-const statusColors = {
-    active: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
-    used: 'bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20',
-    expired: 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20',
-};
-
-const statusLabels = {
-    active: 'Aktif',
-    used: 'Terpakai',
-    expired: 'Kedaluwarsa',
-};
+const { statusLabels } = useStatusColors();
 
 const actionLabels = {
     used: 'Digunakan',
@@ -250,31 +243,28 @@ const breadcrumbs = [
     <Head :title="`Kupon ${coupon.code}`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
             <!-- Header -->
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-4">
                     <Button
                         variant="ghost"
                         size="icon"
-                        class="h-10 w-10"
+                        class="h-10 w-10 rounded-xl"
                         @click="$inertia.visit('/coupons')"
                     >
                         <ArrowLeft class="h-5 w-5" />
                     </Button>
-                    <div class="space-y-1">
-                        <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">
-                            {{ coupon.code }}
-                        </h1>
-                        <p class="text-sm text-muted-foreground md:text-base">
-                            Detail kupon dan informasi pelanggan
-                        </p>
-                    </div>
+                    <PageHeader
+                        :title="coupon.code"
+                        description="Detail kupon dan informasi pelanggan"
+                    />
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <Button
                         variant="outline"
-                        class="h-11 gap-2"
+                        size="lg"
+                        class="h-11 gap-2 rounded-xl"
                         :disabled="isCopying"
                         @click="copyToClipboard"
                     >
@@ -284,7 +274,8 @@ const breadcrumbs = [
                     <Button
                         v-if="coupon.status === 'used'"
                         variant="outline"
-                        class="h-11 gap-2 border-orange-500 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
+                        size="lg"
+                        class="h-11 gap-2 rounded-xl border-orange-500 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
                         @click="openReversalModal"
                     >
                         <RotateCcw class="h-4 w-4" />
@@ -292,7 +283,8 @@ const breadcrumbs = [
                     </Button>
                     <Button
                         variant="destructive"
-                        class="h-11 gap-2"
+                        size="lg"
+                        class="h-11 gap-2 rounded-xl"
                         @click="deleteCoupon"
                     >
                         <Trash2 class="h-4 w-4" />
@@ -315,16 +307,14 @@ const breadcrumbs = [
                 <!-- Main Content -->
                 <div class="space-y-6 lg:col-span-2">
                     <!-- Coupon Info Card -->
-                    <Card class="border-2">
+                    <Card class="border rounded-xl">
                         <CardHeader class="pb-4">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
                                     <FileText class="h-5 w-5 text-primary" />
-                                    <CardTitle class="text-lg md:text-xl">Informasi Kupon</CardTitle>
+                                    <CardTitle class="text-lg font-semibold">Informasi Kupon</CardTitle>
                                 </div>
-                                <Badge :class="statusColors[coupon.status]">
-                                    {{ statusLabels[coupon.status] }}
-                                </Badge>
+                                <StatusBadge :status="coupon.status" />
                             </div>
                         </CardHeader>
                         <CardContent class="space-y-4">
@@ -372,11 +362,11 @@ const breadcrumbs = [
                     </Card>
 
                     <!-- Customer Info Card -->
-                    <Card class="border-2">
+                    <Card class="border rounded-xl">
                         <CardHeader class="pb-4">
                             <div class="flex items-center gap-2">
                                 <User class="h-5 w-5 text-primary" />
-                                <CardTitle class="text-lg md:text-xl">Informasi Pelanggan</CardTitle>
+                                <CardTitle class="text-lg font-semibold">Informasi Pelanggan</CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent class="space-y-4">
@@ -412,10 +402,10 @@ const breadcrumbs = [
                     </Card>
 
                     <!-- Validation History -->
-                    <Card v-if="coupon.validations && coupon.validations.length > 0" class="border-2">
+                    <Card v-if="coupon.validations && coupon.validations.length > 0" class="border rounded-xl">
                         <CardHeader class="pb-4">
-                            <CardTitle class="text-lg md:text-xl">Riwayat Validasi</CardTitle>
-                            <CardDescription class="text-sm">
+                            <CardTitle class="text-lg font-semibold">Riwayat Validasi</CardTitle>
+                            <CardDescription class="text-sm mt-1">
                                 Catatan penggunaan dan pembatalan kupon
                             </CardDescription>
                         </CardHeader>
@@ -424,7 +414,7 @@ const breadcrumbs = [
                                 <div
                                     v-for="validation in coupon.validations"
                                     :key="validation.id"
-                                    class="flex items-start gap-4 rounded-lg border p-4"
+                                    class="flex items-start gap-4 rounded-xl border p-4 transition-all duration-200 hover:bg-muted/50 hover:shadow-sm"
                                 >
                                     <div
                                         :class="[
@@ -482,20 +472,20 @@ const breadcrumbs = [
 
                 <!-- Sidebar: QR Code -->
                 <div class="space-y-6">
-                    <Card class="border-2">
+                    <Card class="border rounded-xl">
                         <CardHeader class="pb-4">
                             <div class="flex items-center gap-2">
                                 <QrCode class="h-5 w-5 text-primary" />
-                                <CardTitle class="text-lg md:text-xl">QR Code</CardTitle>
+                                <CardTitle class="text-lg font-semibold">QR Code</CardTitle>
                             </div>
-                            <CardDescription class="text-sm">
+                            <CardDescription class="text-sm mt-1">
                                 Scan untuk melihat kupon
                             </CardDescription>
                         </CardHeader>
                         <CardContent class="flex flex-col items-center space-y-4">
                             <div
                                 v-if="qrCodeDataUrl"
-                                class="rounded-lg border-2 border-dashed p-4 bg-white dark:bg-gray-900"
+                                class="rounded-xl border-2 border-dashed p-4 bg-white dark:bg-gray-900"
                             >
                                 <img
                                     :src="qrCodeDataUrl"
@@ -503,7 +493,7 @@ const breadcrumbs = [
                                     class="h-auto w-full max-w-[250px]"
                                 />
                             </div>
-                            <div v-else class="flex h-[250px] w-full items-center justify-center rounded-lg border-2 border-dashed">
+                            <div v-else class="flex h-[250px] w-full items-center justify-center rounded-xl border-2 border-dashed">
                                 <p class="text-sm text-muted-foreground">Memuat QR Code...</p>
                             </div>
                             <div class="w-full text-center">
@@ -589,13 +579,14 @@ const breadcrumbs = [
                             variant="outline"
                             @click="closeReversalModal"
                             :disabled="reversalForm.processing"
+                            class="rounded-xl"
                         >
                             Batal
                         </Button>
                         <Button
                             type="submit"
                             variant="destructive"
-                            class="gap-2 bg-orange-500 hover:bg-orange-600"
+                            class="gap-2 rounded-xl bg-orange-500 hover:bg-orange-600"
                             :disabled="reversalForm.processing || !reversalForm.password || reversalForm.reason.length < 10"
                         >
                             <RotateCcw v-if="!reversalForm.processing" class="h-4 w-4" />
