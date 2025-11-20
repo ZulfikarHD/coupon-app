@@ -78,7 +78,7 @@ class CouponController extends Controller
             'customer_phone' => ['required', 'string'],
             'customer_email' => ['nullable', 'email', 'max:255'],
             'customer_social_media' => ['nullable', 'string', 'max:255'],
-            'expires_at' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'date', 'after_or_equal:today'],
         ]);
 
         // Normalize phone number before creating coupon (same as model mutator)
