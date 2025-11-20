@@ -3,6 +3,8 @@
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\UserController;
+use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -53,6 +55,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Reversal route (cancel coupon usage)
     Route::post('/coupons/{id}/reverse', [CouponController::class, 'reverse'])->name('coupons.reverse');
+});
+
+// User Management routes (admin only)
+Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])->group(function () {
+    Route::resource('users', UserController::class)->except(['show']);
 });
 
 require __DIR__.'/settings.php';

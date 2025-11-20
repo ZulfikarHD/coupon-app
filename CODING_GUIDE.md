@@ -1441,6 +1441,157 @@ Closes #123
 
 ---
 
-**Last Updated:** November 20, 2025  
+---
+
+## 👥 User Management & Profile Settings
+
+### **Admin User Management**
+
+Admin users can manage all users in the system through the User Management feature.
+
+#### **Routes**
+
+```php
+// Protected by admin middleware
+Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])->group(function () {
+    Route::resource('users', UserController::class);
+});
+```
+
+#### **Middleware**
+
+Create `EnsureUserIsAdmin` middleware to protect admin routes:
+
+```php
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+class EnsureUserIsAdmin
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            abort(403, 'Unauthorized access. Admin privileges required.');
+        }
+
+        return $next($request);
+    }
+}
+```
+
+#### **User Model Methods**
+
+```php
+// Add to User model
+public function isAdmin(): bool
+{
+    return $this->role === 'admin';
+}
+```
+
+#### **UserService Pattern**
+
+```php
+<?php
+
+namespace App\Services;
+
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+
+class UserService
+{
+    public function create(array $data): User
+    {
+        $data['password'] = Hash::make($data['password']);
+        $data['role'] = $data['role'] ?? 'user';
+        return User::create($data);
+    }
+
+    public function update(User $user, array $data): User
+    {
+        if (isset($data['password']) && !empty($data['password'])) {
+            $data['password'] = Hash::make($data['password']);
+        } else {
+            unset($data['password']);
+        }
+
+        $user->fill($data);
+        $user->save();
+        return $user->fresh();
+    }
+
+    public function delete(User $user): bool
+    {
+        // Prevent deleting yourself
+        if ($user->id === auth()->id()) {
+            throw new \Exception('You cannot delete your own account.');
+        }
+        return $user->delete();
+    }
+}
+```
+
+#### **Conditional Navigation**
+
+Show admin menu items conditionally in sidebar:
+
+```vue
+<script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const page = usePage();
+const isAdmin = computed(() => page.props.auth?.user?.role === 'admin');
+
+const mainNavItems = computed(() => {
+    const items = [
+        // Regular menu items
+    ];
+
+    if (isAdmin.value) {
+        items.push({
+            title: 'User Management',
+            href: '/users',
+            icon: Users,
+        });
+    }
+
+    return items;
+});
+</script>
+```
+
+### **User Profile Settings**
+
+Users can update their own profile information through the Settings pages.
+
+#### **Profile Update**
+
+- Located at `/settings/profile`
+- Users can update name and email
+- Email verification reset if email changes
+- Uses `ProfileUpdateRequest` for validation
+
+#### **Password Update**
+
+- Located at `/settings/password`
+- Requires current password confirmation
+- Rate limited (6 attempts per minute)
+
+#### **Profile Deletion**
+
+- Users can delete their own account
+- Requires password confirmation
+- Automatically logs out after deletion
+
+---
+
+**Last Updated:** December 2025  
 **Maintainer:** Development Team  
-**Version:** 1.0
+**Version:** 1.1
