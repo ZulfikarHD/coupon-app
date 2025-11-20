@@ -30,14 +30,26 @@ class ReportController extends Controller
         $dateFromCarbon = Carbon::parse($dateFrom)->startOfDay();
         $dateToCarbon = Carbon::parse($dateTo)->endOfDay();
 
+        // Pagination parameters
+        $topTypesPage = $request->input('top_types_page', 1);
+        $customersPage = $request->input('customers_page', 1);
+        $perPage = $request->input('per_page', 10);
+
         return Inertia::render('reports/Index', [
             'summaryStats' => $this->reportService->getSummaryStats($dateFromCarbon, $dateToCarbon),
-            'topTypes' => $this->reportService->getTopTypes($dateFromCarbon, $dateToCarbon),
+            'topTypes' => $this->reportService->getTopTypes($dateFromCarbon, $dateToCarbon, $request),
             'dailyUsage' => $this->reportService->getDailyUsage($dateFromCarbon, $dateToCarbon),
-            'frequentCustomers' => $this->reportService->getFrequentCustomers($dateFromCarbon, $dateToCarbon),
+            'frequentCustomers' => $this->reportService->getFrequentCustomers($dateFromCarbon, $dateToCarbon, $request),
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
+                'top_types_page' => $topTypesPage,
+                'customers_page' => $customersPage,
+                'per_page' => $perPage,
+                'top_types_sort' => $request->input('top_types_sort', 'created_count'),
+                'top_types_direction' => $request->input('top_types_direction', 'desc'),
+                'customers_sort' => $request->input('customers_sort', 'total_coupons'),
+                'customers_direction' => $request->input('customers_direction', 'desc'),
             ],
         ]);
     }

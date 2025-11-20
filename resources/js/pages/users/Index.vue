@@ -15,8 +15,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Search, Edit, Trash2, User as UserIcon, Shield, Users, ChevronDown } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { Plus, Search, Edit, Trash2, User as UserIcon, Shield, Users, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { ref, computed } from 'vue';
 import {
     Dialog,
     DialogClose,
@@ -48,6 +48,8 @@ interface Props {
     filters: {
         search?: string;
         role?: string;
+        sort?: string;
+        direction?: string;
     };
 }
 
@@ -56,7 +58,29 @@ const props = defineProps<Props>();
 const form = useForm({
     search: props.filters.search || '',
     role: props.filters.role || 'all',
+    sort: props.filters.sort || 'created_at',
+    direction: props.filters.direction || 'desc',
 });
+
+const currentSort = computed(() => props.filters.sort || 'created_at');
+const currentDirection = computed(() => props.filters.direction || 'desc');
+
+const sort = (column: string) => {
+    const newDirection = currentSort.value === column && currentDirection.value === 'asc' ? 'desc' : 'asc';
+    form.sort = column;
+    form.direction = newDirection;
+    form.get('/users', {
+        preserveState: true,
+        preserveScroll: true,
+    });
+};
+
+const getSortIcon = (column: string) => {
+    if (currentSort.value !== column) {
+        return ArrowUpDown;
+    }
+    return currentDirection.value === 'asc' ? ArrowUp : ArrowDown;
+};
 
 const applyFilters = () => {
     form.get('/users', {
@@ -83,6 +107,46 @@ const deleteUser = (userId: number) => {
 };
 
 const { roleLabels } = useStatusColors();
+
+const buildPaginationQuery = (page: number): string => {
+    const params = new URLSearchParams();
+    if (form.search) params.set('search', form.search);
+    if (form.role && form.role !== 'all') params.set('role', form.role);
+    if (form.sort) params.set('sort', form.sort);
+    if (form.direction) params.set('direction', form.direction);
+    if (page > 1) params.set('page', String(page));
+    return params.toString();
+};
+
+const getPageNumbers = (): (number | string)[] => {
+    const current = props.users.current_page;
+    const last = props.users.last_page;
+    const pages: (number | string)[] = [];
+    
+    if (last <= 7) {
+        for (let i = 1; i <= last; i++) {
+            pages.push(i);
+        }
+    } else {
+        if (current <= 3) {
+            for (let i = 1; i <= 4; i++) pages.push(i);
+            pages.push('...');
+            pages.push(last);
+        } else if (current >= last - 2) {
+            pages.push(1);
+            pages.push('...');
+            for (let i = last - 3; i <= last; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            pages.push('...');
+            for (let i = current - 1; i <= current + 1; i++) pages.push(i);
+            pages.push('...');
+            pages.push(last);
+        }
+    }
+    
+    return pages;
+};
 
 const breadcrumbs = [
     {
@@ -199,19 +263,43 @@ const breadcrumbs = [
                             <thead>
                                 <tr class="border-b">
                                     <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                                        Nama
+                                        <button
+                                            @click="sort('name')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Nama
+                                            <component :is="getSortIcon('name')" class="h-4 w-4" />
+                                        </button>
                                     </th>
                                     <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                                        Email
+                                        <button
+                                            @click="sort('email')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Email
+                                            <component :is="getSortIcon('email')" class="h-4 w-4" />
+                                        </button>
                                     </th>
                                     <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                                        Role
+                                        <button
+                                            @click="sort('role')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Role
+                                            <component :is="getSortIcon('role')" class="h-4 w-4" />
+                                        </button>
                                     </th>
                                     <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                                         Status
                                     </th>
                                     <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                                        Dibuat
+                                        <button
+                                            @click="sort('created_at')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Dibuat
+                                            <component :is="getSortIcon('created_at')" class="h-4 w-4" />
+                                        </button>
                                     </th>
                                     <th class="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
                                         Aksi
@@ -317,32 +405,49 @@ const breadcrumbs = [
                     <!-- Pagination -->
                     <div
                         v-if="props.users.last_page > 1"
-                        class="mt-6 flex items-center justify-between"
+                        class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
                     >
                         <div class="text-sm text-muted-foreground">
                             Menampilkan {{ (props.users.current_page - 1) * props.users.per_page + 1 }} sampai
                             {{ Math.min(props.users.current_page * props.users.per_page, props.users.total) }} dari
                             {{ props.users.total }} user
                         </div>
-                        <div class="flex gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    class="rounded-xl"
-                                    :disabled="props.users.current_page === 1"
-                                    @click="router.get(props.users.current_page - 1 ? `/users?page=${props.users.current_page - 1}` : '/users')"
-                                >
-                                    Sebelumnya
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    class="rounded-xl"
-                                    :disabled="props.users.current_page === props.users.last_page"
-                                    @click="router.get(`/users?page=${props.users.current_page + 1}`)"
-                                >
-                                    Selanjutnya
-                                </Button>
+                        <div class="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="rounded-xl"
+                                :disabled="props.users.current_page === 1"
+                                @click="router.get(`/users?${buildPaginationQuery(props.users.current_page - 1)}`)"
+                            >
+                                <ChevronLeft class="h-4 w-4" />
+                            </Button>
+                            
+                            <div class="flex gap-1">
+                                <template v-for="page in getPageNumbers()" :key="page">
+                                    <Button
+                                        v-if="page !== '...'"
+                                        variant="outline"
+                                        size="sm"
+                                        class="rounded-xl min-w-[2.5rem]"
+                                        :class="{ 'bg-primary text-primary-foreground': page === props.users.current_page }"
+                                        @click="router.get(`/users?${buildPaginationQuery(page)}`)"
+                                    >
+                                        {{ page }}
+                                    </Button>
+                                    <span v-else class="px-2 py-1 text-sm text-muted-foreground">...</span>
+                                </template>
+                            </div>
+                            
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="rounded-xl"
+                                :disabled="props.users.current_page === props.users.last_page"
+                                @click="router.get(`/users?${buildPaginationQuery(props.users.current_page + 1)}`)"
+                            >
+                                <ChevronRight class="h-4 w-4" />
+                            </Button>
                         </div>
                     </div>
                 </CardContent>

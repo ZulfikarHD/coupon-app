@@ -20,17 +20,31 @@ class UserController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = User::query()
-            ->orderBy('created_at', 'desc');
+        $query = User::query();
 
         // Apply filters using service
         $this->userService->applyFilters($query, $request);
+
+        // Apply sorting
+        $sortColumn = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        
+        // Validate sort column to prevent SQL injection
+        $allowedColumns = ['name', 'email', 'role', 'created_at', 'email_verified_at'];
+        if (!in_array($sortColumn, $allowedColumns)) {
+            $sortColumn = 'created_at';
+        }
+        
+        // Validate sort direction
+        $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+        
+        $query->orderBy($sortColumn, $sortDirection);
 
         $users = $query->paginate(20)->withQueryString();
 
         return Inertia::render('users/Index', [
             'users' => $users,
-            'filters' => $request->only(['search', 'role']),
+            'filters' => $request->only(['search', 'role', 'sort', 'direction']),
         ]);
     }
 
