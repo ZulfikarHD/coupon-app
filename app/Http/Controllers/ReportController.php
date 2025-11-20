@@ -38,6 +38,10 @@ class ReportController extends Controller
         $currentlyActive = Coupon::where('status', Coupon::STATUS_ACTIVE)
             ->count();
 
+        $totalExpired = Coupon::where('status', Coupon::STATUS_EXPIRED)
+            ->whereBetween('created_at', [$dateFromCarbon, $dateToCarbon])
+            ->count();
+
         // Top Coupon Types
         $topTypes = Coupon::select('type')
             ->selectRaw('COUNT(*) as created_count')
@@ -81,6 +85,7 @@ class ReportController extends Controller
                 'total_used' => $totalUsed,
                 'redemption_rate' => $redemptionRate,
                 'currently_active' => $currentlyActive,
+                'total_expired' => $totalExpired,
             ],
             'topTypes' => $topTypes,
             'dailyUsage' => $dailyUsage,

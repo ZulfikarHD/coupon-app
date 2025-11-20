@@ -13,7 +13,8 @@ import {
     Download,
     FileSpreadsheet,
     FileText,
-    Loader2
+    Loader2,
+    Clock
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { type BreadcrumbItem } from '@/types';
@@ -23,6 +24,7 @@ interface SummaryStats {
     total_used: number;
     redemption_rate: number;
     currently_active: number;
+    total_expired: number;
 }
 
 interface TopType {
@@ -116,6 +118,14 @@ const statCards = computed(() => [
         icon: Ticket,
         color: 'text-orange-600 dark:text-orange-400',
         bgColor: 'bg-orange-500/10 dark:bg-orange-500/20',
+    },
+    {
+        title: 'Total Kupon Kedaluwarsa',
+        value: props.summaryStats.total_expired,
+        description: `Kupon yang kedaluwarsa dalam periode`,
+        icon: Clock,
+        color: 'text-red-600 dark:text-red-400',
+        bgColor: 'bg-red-500/10 dark:bg-red-500/20',
     },
 ]);
 
@@ -223,7 +233,7 @@ const exportToCSV = () => {
             </Card>
 
             <!-- Summary Stats Cards -->
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                 <Card
                     v-for="(stat, index) in statCards"
                     :key="index"
