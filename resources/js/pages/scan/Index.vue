@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,10 +19,10 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { ScanLine, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Loader2 } from 'lucide-vue-next';
-import { onMounted, onUnmounted, ref, watch, onBeforeUnmount, nextTick } from 'vue';
-import { Html5Qrcode } from 'html5-qrcode';
+import { ScanLine, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Loader2, Camera } from 'lucide-vue-next';
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useSweetAlert } from '@/composables/useSweetAlert';
+import jsQR from 'jsqr';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -45,15 +45,16 @@ interface CouponData {
 }
 
 const swal = useSweetAlert();
-const scannerId = 'qr-reader';
-const scannerElement = ref<HTMLElement | null>(null);
-const html5QrCode = ref<Html5Qrcode | null>(null);
+const videoRef = ref<HTMLVideoElement | null>(null);
+const canvasRef = ref<HTMLCanvasElement | null>(null);
+let stream: MediaStream | null = null;
+let animationFrameId: number | null = null;
+
 const isScanning = ref(false);
 const scanningStatus = ref<string>('');
 const showManualInput = ref(false);
 const manualCode = ref('');
 const isSubmittingManual = ref(false);
-const isNavigating = ref(false);
 
 // Modal state
 const showValidationModal = ref(false);
@@ -63,7 +64,7 @@ const isSubmitting = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
 
-// Watch for success/error messages and show SweetAlert2 toasts
+// Watch for success/error messages
 watch(successMessage, (message) => {
     if (message) {
         swal.toast(message, 'success');
@@ -76,106 +77,87 @@ watch(errorMessage, (message) => {
     }
 });
 
-const startScanner = async () => {
+const stopCamera = () => {
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+
+    if (stream) {
+        stream.getTracks().forEach(track => {
+            track.stop();
+        });
+        stream = null;
+    }
+
+    if (videoRef.value) {
+        videoRef.value.srcObject = null;
+    }
+
+    isScanning.value = false;
+};
+
+const startCamera = async () => {
     try {
-        // Don't start if already scanning, navigating, or element doesn't exist
-        if (html5QrCode.value || isNavigating.value) {
-            return; // Already started or navigating away
-        }
-
-        // Wait for DOM to be ready
-        await nextTick();
-        
-        // Ensure the scanner element exists
-        const element = scannerElement.value || document.getElementById(scannerId);
-        if (!element) {
-            console.warn('Scanner element not found');
-            return;
-        }
-
         scanningStatus.value = 'Meminta izin kamera...';
-        isScanning.value = true;
 
-        html5QrCode.value = new Html5Qrcode(scannerId);
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }
+        });
 
-        await html5QrCode.value.start(
-            { facingMode: 'environment' }, // Use back camera
-            {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0,
-            },
-            (decodedText) => {
-                if (!isNavigating.value) {
-                    handleScannedCode(decodedText);
-                }
-            },
-            (errorMessage) => {
-                // Ignore scanning errors, just keep scanning
-            },
-            {
-                // Disable verbose logging
-                verbose: false,
-            }
-        );
-
-        scanningStatus.value = 'Arahkan kamera ke QR Code kupon';
+        if (videoRef.value) {
+            videoRef.value.srcObject = stream;
+            await videoRef.value.play();
+            isScanning.value = true;
+            scanningStatus.value = 'Arahkan kamera ke QR Code kupon';
+            scanQRCode();
+        }
     } catch (err: any) {
-        console.error('Error starting scanner:', err);
+        console.error('Camera error:', err);
         isScanning.value = false;
-        
-        if (err.name === 'NotAllowedError' || err.message?.includes('permission')) {
+
+        if (err.name === 'NotAllowedError') {
             scanningStatus.value = 'Izin kamera ditolak. Silakan gunakan input manual.';
         } else if (err.name === 'NotFoundError') {
             scanningStatus.value = 'Kamera tidak ditemukan. Silakan gunakan input manual.';
         } else {
             scanningStatus.value = 'Gagal mengakses kamera. Silakan gunakan input manual.';
         }
-        
-        // Clean up on error
-        if (html5QrCode.value) {
-            html5QrCode.value = null;
-        }
     }
 };
 
-const stopScanner = async (isNavigation = false) => {
-    if (html5QrCode.value) {
-        try {
-            // Mark as navigating only if this is a navigation stop
-            if (isNavigation) {
-                isNavigating.value = true;
-            }
-            
-            // Stop the scanner
-            await html5QrCode.value.stop().catch(() => {
-                // Ignore stop errors (might already be stopped)
-            });
-            
-            // Clear the scanner - this removes DOM elements
-            await html5QrCode.value.clear().catch(() => {
-                // Ignore clear errors
-            });
-            
-            // Wait a bit for DOM cleanup to complete
-            await new Promise(resolve => setTimeout(resolve, 50));
-        } catch (err) {
-            // Ignore any errors when stopping
-            console.debug('Scanner cleanup:', err);
-        } finally {
-            // Clear the reference
-            html5QrCode.value = null;
-            isScanning.value = false;
-            scanningStatus.value = '';
-        }
-    } else {
-        isScanning.value = false;
-        scanningStatus.value = '';
+const scanQRCode = () => {
+    if (!videoRef.value || !canvasRef.value || !isScanning.value) {
+        return;
     }
+
+    const canvas = canvasRef.value;
+    const video = videoRef.value;
+    const context = canvas.getContext('2d');
+
+    if (!context) return;
+
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert',
+        });
+
+        if (code) {
+            handleScannedCode(code.data);
+            return;
+        }
+    }
+
+    animationFrameId = requestAnimationFrame(scanQRCode);
 };
 
 const extractCodeFromUrl = (url: string): string => {
-    // Extract code from URL like /coupon/ABC-1234-XYZ
     if (url.includes('/coupon/')) {
         const parts = url.split('/coupon/');
         return parts[parts.length - 1].split('?')[0].split('#')[0];
@@ -184,14 +166,12 @@ const extractCodeFromUrl = (url: string): string => {
 };
 
 const getCsrfToken = (): string | null => {
-    // Get CSRF token from cookie (Laravel sets XSRF-TOKEN cookie)
     const name = 'XSRF-TOKEN';
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) {
         return decodeURIComponent(parts.pop()?.split(';').shift() || '');
     }
-    // Fallback: try to get from meta tag if available
     const metaToken = document.querySelector('meta[name="csrf-token"]');
     return metaToken ? (metaToken as HTMLMetaElement).content : null;
 };
@@ -206,9 +186,9 @@ const checkCoupon = async (code: string): Promise<{ success: boolean; data?: any
             },
             credentials: 'same-origin',
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok && data.can_validate) {
             return {
                 success: true,
@@ -229,24 +209,14 @@ const checkCoupon = async (code: string): Promise<{ success: boolean; data?: any
 };
 
 const handleScannedCode = async (decodedText: string) => {
-    // Don't process if navigating
-    if (isNavigating.value) {
-        return;
-    }
-    
-    // Stop scanner temporarily
-    await stopScanner();
-    
-    // Check again after stopping (in case navigation started)
-    if (isNavigating.value) {
-        return;
-    }
-    
+    // Stop scanning temporarily
+    stopCamera();
+
     const code = extractCodeFromUrl(decodedText);
     scanningStatus.value = `Kode terdeteksi: ${code}. Memeriksa...`;
 
     const result = await checkCoupon(code);
-    
+
     if (result.success && result.data) {
         couponData.value = result.data;
         showValidationModal.value = true;
@@ -255,12 +225,10 @@ const handleScannedCode = async (decodedText: string) => {
     } else {
         errorMessage.value = result.error || 'Kupon tidak dapat divalidasi';
         scanningStatus.value = result.error || 'Kupon tidak dapat divalidasi';
-        
-        // Restart scanner after 3 seconds (only if not navigating)
+
+        // Restart scanner after 3 seconds
         setTimeout(() => {
-            if (!isNavigating.value) {
-                startScanner();
-            }
+            startCamera();
         }, 3000);
     }
 };
@@ -273,12 +241,12 @@ const handleManualSubmit = async () => {
 
     isSubmittingManual.value = true;
     errorMessage.value = '';
-    
+
     const code = extractCodeFromUrl(manualCode.value.trim());
     const result = await checkCoupon(code);
-    
+
     isSubmittingManual.value = false;
-    
+
     if (result.success && result.data) {
         couponData.value = result.data;
         showValidationModal.value = true;
@@ -294,9 +262,7 @@ const handleValidate = async () => {
         return;
     }
 
-    if (!couponData.value) {
-        return;
-    }
+    if (!couponData.value) return;
 
     isSubmitting.value = true;
     errorMessage.value = '';
@@ -308,7 +274,7 @@ const handleValidate = async () => {
             'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
         };
-        
+
         if (csrfToken) {
             headers['X-XSRF-TOKEN'] = csrfToken;
         }
@@ -326,21 +292,16 @@ const handleValidate = async () => {
             const message = data.message || 'Kupon berhasil divalidasi';
             successMessage.value = message;
             showValidationModal.value = false;
-            
-            // Reset form
+
             password.value = '';
             couponData.value = null;
-            
-            // Clear success message after 5 seconds
+
             setTimeout(() => {
                 successMessage.value = '';
             }, 5000);
-            
-            // Restart scanner after 3 seconds (only if not navigating)
+
             setTimeout(() => {
-                if (!isNavigating.value) {
-                    startScanner();
-                }
+                startCamera();
             }, 3000);
         } else {
             if (response.status === 401) {
@@ -363,50 +324,29 @@ const handleModalClose = () => {
     password.value = '';
     errorMessage.value = '';
     couponData.value = null;
-    
-    // Restart scanner (only if not navigating)
-    if (!isScanning.value && !isNavigating.value) {
-        startScanner();
+
+    if (!isScanning.value) {
+        startCamera();
     }
 };
 
-onMounted(async () => {
-    // Wait for Vue to finish rendering before starting scanner
-    await nextTick();
-    // Add a small delay to ensure DOM is fully ready
+// Lifecycle
+onMounted(() => {
     setTimeout(() => {
-        if (!isNavigating.value) {
-            startScanner();
-        }
-    }, 100);
+        startCamera();
+    }, 200);
 });
 
 onBeforeUnmount(() => {
-    // Stop scanner before component unmounts (this is navigation)
-    stopScanner(true);
+    stopCamera();
 });
 
-onUnmounted(() => {
-    // Ensure scanner is stopped (this is navigation)
-    stopScanner(true);
+// Handle navigation away
+router.on('before', () => {
+    if (window.location.pathname === '/scan') {
+        stopCamera();
+    }
 });
-
-// Stop scanner when navigating away using Inertia events
-if (typeof window !== 'undefined') {
-    const stopOnNavigate = () => {
-        isNavigating.value = true;
-        stopScanner(true); // Pass true to indicate this is a navigation stop
-    };
-    
-    // Listen to Inertia navigation events
-    document.addEventListener('inertia:start', stopOnNavigate);
-    
-    onUnmounted(() => {
-        document.removeEventListener('inertia:start', stopOnNavigate);
-        // Ensure scanner is stopped on unmount
-        stopScanner(true);
-    });
-}
 </script>
 
 <template>
@@ -427,31 +367,47 @@ if (typeof window !== 'undefined') {
                 <CardContent class="space-y-4">
                     <!-- Scanner View -->
                     <div class="space-y-4">
-                        <div
-                            ref="scannerElement"
-                            :id="scannerId"
-                            class="w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden relative"
-                            style="min-height: 400px; aspect-ratio: 1;"
-                        >
-                            <div v-if="!isScanning" class="text-center space-y-2 p-8">
-                                <ScanLine class="h-12 w-12 mx-auto text-muted-foreground" />
-                                <p class="text-sm text-muted-foreground">Tekan tombol untuk memulai scan</p>
+                        <div class="relative w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800 overflow-hidden" style="min-height: 400px;">
+                            <video
+                                ref="videoRef"
+                                class="w-full h-full object-cover"
+                                autoplay
+                                playsinline
+                                muted
+                            ></video>
+                            <canvas ref="canvasRef" class="hidden"></canvas>
+
+                            <div v-if="!isScanning" class="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+                                <div class="text-center space-y-2 p-8">
+                                    <Camera class="h-12 w-12 mx-auto text-muted-foreground" />
+                                    <p class="text-sm text-muted-foreground">Memuat kamera...</p>
+                                </div>
+                            </div>
+
+                            <!-- Scanning overlay -->
+                            <div v-if="isScanning" class="absolute inset-0 pointer-events-none">
+                                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-2 border-primary rounded-xl">
+                                    <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary"></div>
+                                    <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary"></div>
+                                    <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary"></div>
+                                    <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary"></div>
+                                </div>
                             </div>
                         </div>
-                        
+
                         <div v-if="scanningStatus" class="flex items-center gap-2 rounded-xl border p-4 bg-card">
                             <Loader2 v-if="isScanning && !scanningStatus.includes('terdeteksi')" class="h-5 w-5 animate-spin text-primary flex-shrink-0" />
-                            <AlertCircle v-else-if="errorMessage || scanningStatus.includes('tidak')" class="h-5 w-5 text-destructive flex-shrink-0" />
+                            <AlertCircle v-else-if="errorMessage || scanningStatus.includes('tidak') || scanningStatus.includes('Gagal')" class="h-5 w-5 text-destructive flex-shrink-0" />
                             <CheckCircle2 v-else class="h-5 w-5 text-green-600 flex-shrink-0" />
-                            <p class="text-sm flex-1" :class="errorMessage || scanningStatus.includes('tidak') ? 'text-destructive' : ''">
+                            <p class="text-sm flex-1" :class="errorMessage || scanningStatus.includes('tidak') || scanningStatus.includes('Gagal') ? 'text-destructive' : ''">
                                 {{ scanningStatus }}
                             </p>
                         </div>
 
                         <!-- Manual Input Section -->
-                        <Collapsible v-model="showManualInput">
+                        <Collapsible v-model:open="showManualInput">
                             <CollapsibleTrigger as-child>
-                                <Button variant="outline" class="w-full justify-between rounded-xl active:scale-[0.98] transition-transform">
+                                <Button variant="outline" class="w-full justify-between rounded-xl">
                                     <span>Atau masukkan kode manual</span>
                                     <ChevronDown v-if="!showManualInput" class="h-4 w-4" />
                                     <ChevronUp v-else class="h-4 w-4" />
@@ -471,7 +427,7 @@ if (typeof window !== 'undefined') {
                                         <Button
                                             @click="handleManualSubmit"
                                             :disabled="isSubmittingManual"
-                                            class="h-11 w-full sm:w-auto rounded-xl active:scale-[0.98] transition-transform"
+                                            class="h-11 w-full sm:w-auto rounded-xl"
                                         >
                                             <Loader2 v-if="isSubmittingManual" class="mr-2 h-4 w-4 animate-spin" />
                                             Cek Kode
@@ -553,14 +509,14 @@ if (typeof window !== 'undefined') {
                         variant="outline"
                         @click="handleModalClose"
                         :disabled="isSubmitting"
-                        class="w-full sm:w-auto rounded-xl h-11 active:scale-[0.98] transition-transform"
+                        class="w-full sm:w-auto rounded-xl h-11"
                     >
                         Batal
                     </Button>
                     <Button
                         @click="handleValidate"
                         :disabled="isSubmitting || !password.trim()"
-                        class="w-full sm:w-auto rounded-xl h-11 active:scale-[0.98] transition-transform"
+                        class="w-full sm:w-auto rounded-xl h-11"
                     >
                         <Loader2 v-if="isSubmitting" class="mr-2 h-4 w-4 animate-spin" />
                         Konfirmasi Penggunaan
@@ -572,49 +528,7 @@ if (typeof window !== 'undefined') {
 </template>
 
 <style scoped>
-/* Ensure scanner elements are contained and don't block navigation */
-#qr-reader {
-    position: relative;
-    isolation: isolate;
-    contain: layout style paint;
-    overflow: hidden;
-}
-
-/* Contain scanner video and canvas within the container */
-#qr-reader video,
-#qr-reader canvas {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover;
-    pointer-events: auto;
-}
-
-/* Prevent any Html5Qrcode overlays from blocking navigation */
-:deep(#qr-reader__dashboard),
-:deep(#qr-reader__camera_selection),
-:deep(#qr-reader__file_selection) {
-    position: absolute !important;
-    z-index: 1 !important;
-    pointer-events: auto;
-}
-
-/* Ensure navigation elements stay on top and are clickable */
-:deep(nav) {
-    position: relative !important;
-    z-index: 1000 !important;
-    pointer-events: auto !important;
-}
-
-/* Ensure links in navigation are clickable */
-:deep(nav a),
-:deep(nav button),
-:deep([role="navigation"] a),
-:deep([role="navigation"] button) {
-    position: relative !important;
-    z-index: 1001 !important;
-    pointer-events: auto !important;
+video {
+    max-height: 500px;
 }
 </style>
