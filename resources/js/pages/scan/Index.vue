@@ -323,12 +323,12 @@ onUnmounted(() => {
     <Head title="Scan Kupon" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
             <Card class="border rounded-xl">
                 <CardHeader class="pb-4">
                     <div class="flex items-center gap-2">
                         <ScanLine class="h-5 w-5 text-primary" />
-                        <CardTitle class="text-lg font-semibold">Scan Kupon</CardTitle>
+                        <CardTitle class="text-base sm:text-lg font-semibold">Scan Kupon</CardTitle>
                     </div>
                     <CardDescription class="text-sm mt-1">
                         Arahkan kamera ke QR Code kupon untuk memvalidasi
@@ -339,15 +339,20 @@ onUnmounted(() => {
                     <div class="space-y-4">
                         <div
                             :id="scannerId"
-                            class="w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800"
-                            style="min-height: 300px;"
-                        ></div>
+                            class="w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+                            style="min-height: 400px; aspect-ratio: 1;"
+                        >
+                            <div v-if="!isScanning" class="text-center space-y-2 p-8">
+                                <ScanLine class="h-12 w-12 mx-auto text-muted-foreground" />
+                                <p class="text-sm text-muted-foreground">Tekan tombol untuk memulai scan</p>
+                            </div>
+                        </div>
                         
-                        <div v-if="scanningStatus" class="flex items-center gap-2 rounded-xl border p-3">
-                            <Loader2 v-if="isScanning && !scanningStatus.includes('terdeteksi')" class="h-4 w-4 animate-spin text-primary" />
-                            <AlertCircle v-else-if="errorMessage || scanningStatus.includes('tidak')" class="h-4 w-4 text-destructive" />
-                            <CheckCircle2 v-else class="h-4 w-4 text-green-600" />
-                            <p class="text-sm" :class="errorMessage || scanningStatus.includes('tidak') ? 'text-destructive' : ''">
+                        <div v-if="scanningStatus" class="flex items-center gap-2 rounded-xl border p-4 bg-card">
+                            <Loader2 v-if="isScanning && !scanningStatus.includes('terdeteksi')" class="h-5 w-5 animate-spin text-primary flex-shrink-0" />
+                            <AlertCircle v-else-if="errorMessage || scanningStatus.includes('tidak')" class="h-5 w-5 text-destructive flex-shrink-0" />
+                            <CheckCircle2 v-else class="h-5 w-5 text-green-600 flex-shrink-0" />
+                            <p class="text-sm flex-1" :class="errorMessage || scanningStatus.includes('tidak') ? 'text-destructive' : ''">
                                 {{ scanningStatus }}
                             </p>
                         </div>
@@ -355,32 +360,35 @@ onUnmounted(() => {
                         <!-- Manual Input Section -->
                         <Collapsible v-model="showManualInput">
                             <CollapsibleTrigger as-child>
-                                <Button variant="outline" class="w-full justify-between rounded-xl">
+                                <Button variant="outline" class="w-full justify-between rounded-xl active:scale-[0.98] transition-transform">
                                     <span>Atau masukkan kode manual</span>
                                     <ChevronDown v-if="!showManualInput" class="h-4 w-4" />
                                     <ChevronUp v-else class="h-4 w-4" />
                                 </Button>
                             </CollapsibleTrigger>
                             <CollapsibleContent class="mt-4 space-y-4">
-                                <div class="space-y-2">
-                                    <Label for="manual-code">Kode Kupon</Label>
-                                    <div class="flex gap-2">
+                                <div class="space-y-3">
+                                    <Label for="manual-code" class="text-sm font-medium">Kode Kupon</Label>
+                                    <div class="flex flex-col gap-2 sm:flex-row">
                                         <Input
                                             id="manual-code"
                                             v-model="manualCode"
                                             placeholder="Masukkan kode kupon atau URL"
-                                            class="flex-1 rounded-xl"
+                                            class="flex-1 h-11 text-base rounded-xl sm:h-10 sm:text-sm"
                                             @keyup.enter="handleManualSubmit"
                                         />
                                         <Button
                                             @click="handleManualSubmit"
                                             :disabled="isSubmittingManual"
-                                            class="rounded-xl"
+                                            class="h-11 w-full sm:w-auto rounded-xl active:scale-[0.98] transition-transform"
                                         >
                                             <Loader2 v-if="isSubmittingManual" class="mr-2 h-4 w-4 animate-spin" />
-                                            Cek
+                                            Cek Kode
                                         </Button>
                                     </div>
+                                    <p class="text-xs text-muted-foreground">
+                                        Anda dapat memasukkan kode kupon atau URL lengkap
+                                    </p>
                                 </div>
                             </CollapsibleContent>
                         </Collapsible>
@@ -403,45 +411,41 @@ onUnmounted(() => {
 
         <!-- Validation Confirmation Modal -->
         <Dialog :open="showValidationModal" @update:open="handleModalClose">
-            <DialogContent class="sm:max-w-md">
+            <DialogContent class="sm:max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Konfirmasi Penggunaan Kupon</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle class="text-lg sm:text-xl">Konfirmasi Penggunaan Kupon</DialogTitle>
+                    <DialogDescription class="text-sm">
                         Masukkan password Anda untuk mengkonfirmasi penggunaan kupon ini
                     </DialogDescription>
                 </DialogHeader>
 
                 <div v-if="couponData" class="space-y-4 py-4">
                     <!-- Coupon Info -->
-                    <div class="space-y-3 rounded-lg border bg-muted/50 p-4">
+                    <div class="space-y-3 rounded-xl border bg-muted/50 p-4">
                         <div>
                             <p class="text-xs font-medium text-muted-foreground">Kode Kupon</p>
-                            <p class="mt-1 font-mono font-semibold">{{ couponData.code }}</p>
+                            <p class="mt-1 font-mono font-semibold text-base break-all">{{ couponData.code }}</p>
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted-foreground">Jenis</p>
-                            <p class="mt-1">{{ couponData.type }}</p>
-                        </div>
-                        <div>
-                            <p class="text-xs font-medium text-muted-foreground">Deskripsi</p>
-                            <p class="mt-1 text-sm">{{ couponData.description }}</p>
+                            <p class="mt-1 text-sm">{{ couponData.type }}</p>
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted-foreground">Pelanggan</p>
-                            <p class="mt-1">{{ couponData.customer_name }}</p>
+                            <p class="mt-1 text-sm">{{ couponData.customer_name }}</p>
                         </div>
                     </div>
 
                     <!-- Password Input -->
                     <div class="space-y-2">
-                        <Label for="password">Password</Label>
+                        <Label for="password" class="text-sm font-medium">Password</Label>
                         <Input
                             id="password"
                             v-model="password"
                             type="password"
                             placeholder="Masukkan password Anda"
                             :disabled="isSubmitting"
-                            class="rounded-xl"
+                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                             @keyup.enter="handleValidate"
                         />
                     </div>
@@ -453,19 +457,19 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter class="flex-col gap-2 sm:flex-row">
                     <Button
                         variant="outline"
                         @click="handleModalClose"
                         :disabled="isSubmitting"
-                        class="rounded-xl"
+                        class="w-full sm:w-auto rounded-xl h-11 active:scale-[0.98] transition-transform"
                     >
                         Batal
                     </Button>
                     <Button
                         @click="handleValidate"
                         :disabled="isSubmitting || !password.trim()"
-                        class="rounded-xl"
+                        class="w-full sm:w-auto rounded-xl h-11 active:scale-[0.98] transition-transform"
                     >
                         <Loader2 v-if="isSubmitting" class="mr-2 h-4 w-4 animate-spin" />
                         Konfirmasi Penggunaan

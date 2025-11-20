@@ -378,7 +378,7 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
     <Head title="Laporan" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
             <!-- Header -->
             <PageHeader
                 title="Laporan & Analitik"
@@ -400,24 +400,24 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                     <form @submit.prevent="applyFilters" class="space-y-4">
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
                             <div class="flex-1 space-y-2">
-                                <Label for="date_from">Dari Tanggal</Label>
+                                <Label for="date_from" class="text-sm font-medium">Dari Tanggal</Label>
                                 <Input
                                     id="date_from"
                                     v-model="form.date_from"
                                     type="date"
                                     :disabled="isLoading"
-                                    class="w-full rounded-xl"
+                                    class="w-full h-11 text-base rounded-xl md:h-10 md:text-sm"
                                     @change="form.top_types_page = 1; form.customers_page = 1; applyFilters()"
                                 />
                             </div>
                             <div class="flex-1 space-y-2">
-                                <Label for="date_to">Sampai Tanggal</Label>
+                                <Label for="date_to" class="text-sm font-medium">Sampai Tanggal</Label>
                                 <Input
                                     id="date_to"
                                     v-model="form.date_to"
                                     type="date"
                                     :disabled="isLoading"
-                                    class="w-full rounded-xl"
+                                    class="w-full h-11 text-base rounded-xl md:h-10 md:text-sm"
                                     @change="form.top_types_page = 1; form.customers_page = 1; applyFilters()"
                                 />
                             </div>
@@ -427,7 +427,7 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                     variant="outline"
                                     @click="resetFilters"
                                     :disabled="isLoading"
-                                    class="rounded-xl"
+                                    class="h-11 w-full sm:w-auto rounded-xl active:scale-[0.98] transition-transform"
                                 >
                                     Reset
                                 </Button>
@@ -442,26 +442,26 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
             </Card>
 
             <!-- Summary Stats Cards -->
-            <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+            <div class="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5">
                 <Card
                     v-for="(stat, index) in statCards"
                     :key="index"
-                    class="border transition-all duration-200 hover:shadow-md rounded-xl"
+                    class="border transition-all duration-200 hover:shadow-md rounded-xl active:scale-[0.98]"
                 >
-                    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle class="text-sm font-medium text-muted-foreground">
+                    <CardContent class="p-4 sm:p-6">
+                        <div class="flex items-start justify-between mb-3">
+                            <div :class="[stat.bgColor, 'rounded-xl p-2.5']">
+                                <component
+                                    :is="stat.icon"
+                                    :class="[stat.color, 'h-5 w-5']"
+                                />
+                            </div>
+                        </div>
+                        <div class="text-2xl sm:text-3xl font-bold mb-1">{{ stat.value }}</div>
+                        <CardTitle class="text-xs sm:text-sm font-medium text-muted-foreground mb-1">
                             {{ stat.title }}
                         </CardTitle>
-                        <div :class="[stat.bgColor, 'rounded-lg p-2']">
-                            <component
-                                :is="stat.icon"
-                                :class="[stat.color, 'h-5 w-5']"
-                            />
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="text-2xl font-bold">{{ stat.value }}</div>
-                        <p class="text-xs text-muted-foreground mt-1">
+                        <p class="text-xs text-muted-foreground leading-relaxed">
                             {{ stat.description }}
                         </p>
                     </CardContent>
@@ -481,13 +481,13 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                 Ranking tipe kupon berdasarkan jumlah dibuat dan digunakan
                             </CardDescription>
                         </div>
-                        <div class="flex gap-2">
+                        <div class="flex flex-col gap-2 sm:flex-row">
                             <Button
                                 variant="outline"
                                 size="sm"
                                 @click="exportToExcel"
                                 :disabled="isExporting"
-                                class="gap-2 rounded-xl"
+                                class="w-full sm:w-auto gap-2 rounded-xl active:scale-[0.98] transition-transform"
                             >
                                 <Loader2 v-if="isExporting && exportFormat === 'xlsx'" class="h-4 w-4 animate-spin" />
                                 <FileSpreadsheet v-else class="h-4 w-4" />
@@ -498,7 +498,7 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                 size="sm"
                                 @click="exportToCSV"
                                 :disabled="isExporting"
-                                class="gap-2"
+                                class="w-full sm:w-auto gap-2 rounded-xl active:scale-[0.98] transition-transform"
                             >
                                 <Loader2 v-if="isExporting && exportFormat === 'csv'" class="h-4 w-4 animate-spin" />
                                 <FileText v-else class="h-4 w-4" />
@@ -514,7 +514,48 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                         title="Tidak ada data kupon"
                         description="Tidak ada data kupon dalam periode yang dipilih"
                     />
-                    <div v-else class="overflow-x-auto">
+                    <!-- Mobile View: Cards -->
+                    <div v-else class="block space-y-3 md:hidden">
+                        <Card
+                            v-for="(type, index) in topTypesData"
+                            :key="index"
+                            class="border rounded-xl p-4 active:scale-[0.98] transition-transform"
+                        >
+                            <div class="space-y-3">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <p class="font-semibold text-foreground">{{ type.type }}</p>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3 text-sm">
+                                    <div>
+                                        <p class="text-muted-foreground">Dibuat</p>
+                                        <p class="font-medium">{{ type.created_count }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-muted-foreground">Terpakai</p>
+                                        <p class="font-medium">{{ type.used_count }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-muted-foreground">Kedaluwarsa</p>
+                                        <p class="font-medium text-red-600">{{ type.expired_count }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-muted-foreground">Tingkat</p>
+                                        <p class="font-semibold" :class="{
+                                            'text-green-600': type.usage_rate >= 50,
+                                            'text-orange-600': type.usage_rate >= 25 && type.usage_rate < 50,
+                                            'text-red-600': type.usage_rate < 25,
+                                        }">
+                                            {{ type.usage_rate }}%
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                    <!-- Desktop View: Table -->
+                    <div v-else class="hidden md:block overflow-x-auto">
                         <table class="w-full border-collapse">
                             <thead>
                                 <tr class="border-b border-border">
@@ -605,42 +646,42 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                     <!-- Pagination for Top Types -->
                     <div v-if="topTypesPagination && topTypesPagination.last_page > 1" class="border-t p-4">
                         <div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
-                            <p class="text-sm text-muted-foreground">
+                            <p class="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
                                 Menampilkan {{ (topTypesPagination.current_page - 1) * topTypesPagination.per_page + 1 }} sampai
                                 {{ Math.min(topTypesPagination.current_page * topTypesPagination.per_page, topTypesPagination.total) }} dari
                                 {{ topTypesPagination.total }} tipe
                             </p>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1 sm:gap-2">
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    class="rounded-xl"
+                                    class="h-9 w-9 rounded-xl p-0 active:scale-[0.98] transition-transform"
                                     :disabled="topTypesPagination.current_page === 1"
                                     @click="router.get(`/reports?${buildPaginationQuery('top_types', topTypesPagination.current_page - 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
                                     <ChevronLeft class="h-4 w-4" />
                                 </Button>
                                 
-                                <div class="flex gap-1">
+                                <div class="hidden xs:flex gap-1">
                                     <template v-for="page in getPageNumbers(topTypesPagination)" :key="page">
                                         <Button
                                             v-if="page !== '...'"
                                             variant="outline"
                                             size="sm"
-                                            class="rounded-xl min-w-[2.5rem]"
+                                            class="h-9 min-w-[2.5rem] rounded-xl text-xs active:scale-[0.98] transition-transform"
                                             :class="{ 'bg-primary text-primary-foreground': page === topTypesPagination.current_page }"
                                             @click="router.get(`/reports?${buildPaginationQuery('top_types', page)}`, { preserveState: true, preserveScroll: true })"
                                         >
                                             {{ page }}
                                         </Button>
-                                        <span v-else class="px-2 py-1 text-sm text-muted-foreground">...</span>
+                                        <span v-else class="px-2 py-1 text-xs text-muted-foreground">...</span>
                                     </template>
                                 </div>
                                 
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    class="rounded-xl"
+                                    class="h-9 w-9 rounded-xl p-0 active:scale-[0.98] transition-transform"
                                     :disabled="topTypesPagination.current_page === topTypesPagination.last_page"
                                     @click="router.get(`/reports?${buildPaginationQuery('top_types', topTypesPagination.current_page + 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
@@ -670,7 +711,56 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                         title="Tidak ada data pelanggan"
                         description="Tidak ada data pelanggan dalam periode yang dipilih"
                     />
-                    <div v-else class="overflow-x-auto">
+                    <!-- Mobile View: Cards -->
+                    <div v-else class="block space-y-3 md:hidden">
+                        <Card
+                            v-for="(customer, index) in customersData"
+                            :key="index"
+                            class="border rounded-xl p-4 active:scale-[0.98] transition-transform"
+                        >
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="font-semibold text-foreground">{{ customer.customer_name }}</p>
+                                    <p class="text-sm text-muted-foreground mt-1">{{ customer.formatted_phone }}</p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3 text-sm">
+                                    <div>
+                                        <p class="text-muted-foreground">Total Kupon</p>
+                                        <p class="font-medium">{{ customer.total_coupons }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-muted-foreground">Terpakai</p>
+                                        <p class="font-medium">{{ customer.total_used }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-muted-foreground">Tingkat</p>
+                                        <p class="font-semibold" :class="{
+                                            'text-green-600': customer.usage_rate >= 50,
+                                            'text-orange-600': customer.usage_rate >= 25 && customer.usage_rate < 50,
+                                            'text-red-600': customer.usage_rate < 25,
+                                        }">
+                                            {{ customer.usage_rate }}%
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-muted-foreground">Terakhir</p>
+                                        <p class="font-medium text-xs">{{ formatDate(customer.last_coupon_date) }}</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    @click="viewCustomerCoupons(customer)"
+                                    class="w-full gap-2 rounded-xl active:scale-[0.98] transition-transform"
+                                >
+                                    <Eye class="h-4 w-4" />
+                                    Lihat Kupon
+                                </Button>
+                            </div>
+                        </Card>
+                    </div>
+                    <!-- Desktop View: Table -->
+                    <div v-else class="hidden md:block overflow-x-auto">
                         <table class="w-full border-collapse">
                             <thead>
                                 <tr class="border-b border-border">
@@ -765,7 +855,7 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                             variant="ghost"
                                             size="sm"
                                             @click="viewCustomerCoupons(customer)"
-                                            class="gap-2 rounded-xl"
+                                            class="gap-2 rounded-xl active:scale-[0.98] transition-transform"
                                         >
                                             <Eye class="h-4 w-4" />
                                             Lihat Kupon
@@ -779,42 +869,42 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                     <!-- Pagination for Frequent Customers -->
                     <div v-if="customersPagination && customersPagination.last_page > 1" class="border-t p-4">
                         <div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
-                            <p class="text-sm text-muted-foreground">
+                            <p class="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
                                 Menampilkan {{ (customersPagination.current_page - 1) * customersPagination.per_page + 1 }} sampai
                                 {{ Math.min(customersPagination.current_page * customersPagination.per_page, customersPagination.total) }} dari
                                 {{ customersPagination.total }} pelanggan
                             </p>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1 sm:gap-2">
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    class="rounded-xl"
+                                    class="h-9 w-9 rounded-xl p-0 active:scale-[0.98] transition-transform"
                                     :disabled="customersPagination.current_page === 1"
                                     @click="router.get(`/reports?${buildPaginationQuery('customers', customersPagination.current_page - 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
                                     <ChevronLeft class="h-4 w-4" />
                                 </Button>
                                 
-                                <div class="flex gap-1">
+                                <div class="hidden xs:flex gap-1">
                                     <template v-for="page in getPageNumbers(customersPagination)" :key="page">
                                         <Button
                                             v-if="page !== '...'"
                                             variant="outline"
                                             size="sm"
-                                            class="rounded-xl min-w-[2.5rem]"
+                                            class="h-9 min-w-[2.5rem] rounded-xl text-xs active:scale-[0.98] transition-transform"
                                             :class="{ 'bg-primary text-primary-foreground': page === customersPagination.current_page }"
                                             @click="router.get(`/reports?${buildPaginationQuery('customers', page)}`, { preserveState: true, preserveScroll: true })"
                                         >
                                             {{ page }}
                                         </Button>
-                                        <span v-else class="px-2 py-1 text-sm text-muted-foreground">...</span>
+                                        <span v-else class="px-2 py-1 text-xs text-muted-foreground">...</span>
                                     </template>
                                 </div>
                                 
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    class="rounded-xl"
+                                    class="h-9 w-9 rounded-xl p-0 active:scale-[0.98] transition-transform"
                                     :disabled="customersPagination.current_page === customersPagination.last_page"
                                     @click="router.get(`/reports?${buildPaginationQuery('customers', customersPagination.current_page + 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
