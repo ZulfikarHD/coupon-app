@@ -35,6 +35,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('scan/Index');
     })->name('scan');
 
+    // API endpoint for coupon check (in web routes for session auth)
+    // Called by scanner page - needs session middleware
+    Route::get('/api/coupons/{code}/check', [CouponController::class, 'check'])->name('api.coupons.check');
+    
     // Validation route (web route for CSRF protection)
     Route::post('/coupons/{code}/validate', [CouponController::class, 'validate'])->name('coupons.validate');
     

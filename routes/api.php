@@ -8,8 +8,6 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// Coupon API routes (protected with auth middleware)
-Route::middleware(['auth:sanctum'])->group(function () {
-    // Check coupon status before validation (SPRINT 2.4)
-    Route::get('/coupons/{code}/check', [CouponController::class, 'check'])->name('api.coupons.check');
-});
+// Note: Coupon check endpoint moved to web.php for session-based authentication
+// API routes don't have session middleware, so web routes are better for
+// endpoints called from authenticated web pages (like the scanner)
