@@ -21,6 +21,10 @@ Route::get('reports', [ReportController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('reports.index');
 
+Route::get('reports/export', [ReportController::class, 'export'])
+    ->middleware(['auth', 'verified'])
+    ->name('reports.export');
+
 // Public coupon view (no auth required)
 Route::get('/coupon/{code}', function ($code) {
     $coupon = \App\Models\Coupon::with(['validations' => function ($query) {
