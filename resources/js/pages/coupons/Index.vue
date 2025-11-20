@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Search, Filter, Eye, X, ChevronDown, ChevronUp, Ticket } from 'lucide-vue-next';
+import { Plus, Search, Filter, Eye, X, ChevronDown, ChevronUp, Ticket, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface Coupon {
@@ -45,6 +45,8 @@ interface Props {
         date_to?: string;
         expires_from?: string;
         expires_to?: string;
+        sort?: string;
+        direction?: string;
     };
 }
 
@@ -68,10 +70,29 @@ const form = useForm({
     date_to: props.filters.date_to || '',
     expires_from: props.filters.expires_from || '',
     expires_to: props.filters.expires_to || '',
+    sort: props.filters.sort || 'created_at',
+    direction: props.filters.direction || 'desc',
 });
 
 const showAdvancedSearch = ref(false);
 const { statusLabels } = useStatusColors();
+
+const currentSort = computed(() => props.filters.sort || 'created_at');
+const currentDirection = computed(() => props.filters.direction || 'desc');
+
+const sort = (column: string) => {
+    const newDirection = currentSort.value === column && currentDirection.value === 'asc' ? 'desc' : 'asc';
+    form.sort = column;
+    form.direction = newDirection;
+    applyFilters();
+};
+
+const getSortIcon = (column: string) => {
+    if (currentSort.value !== column) {
+        return ArrowUpDown;
+    }
+    return currentDirection.value === 'asc' ? ArrowUp : ArrowDown;
+};
 
 const statusOptions = [
     { value: 'active', label: 'Aktif' },
@@ -208,9 +229,41 @@ const buildQueryString = (page?: number): string => {
     if (form.date_to) searchParams.set('date_to', form.date_to);
     if (form.expires_from) searchParams.set('expires_from', form.expires_from);
     if (form.expires_to) searchParams.set('expires_to', form.expires_to);
+    if (form.sort) searchParams.set('sort', form.sort);
+    if (form.direction) searchParams.set('direction', form.direction);
     if (page) searchParams.set('page', String(page));
     
     return searchParams.toString();
+};
+
+const getPageNumbers = (): (number | string)[] => {
+    const current = props.coupons.current_page;
+    const last = props.coupons.last_page;
+    const pages: (number | string)[] = [];
+    
+    if (last <= 7) {
+        for (let i = 1; i <= last; i++) {
+            pages.push(i);
+        }
+    } else {
+        if (current <= 3) {
+            for (let i = 1; i <= 4; i++) pages.push(i);
+            pages.push('...');
+            pages.push(last);
+        } else if (current >= last - 2) {
+            pages.push(1);
+            pages.push('...');
+            for (let i = last - 3; i <= last; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            pages.push('...');
+            for (let i = current - 1; i <= current + 1; i++) pages.push(i);
+            pages.push('...');
+            pages.push(last);
+        }
+    }
+    
+    return pages;
 };
 
 const breadcrumbs = [
@@ -480,22 +533,58 @@ const breadcrumbs = [
                             <thead class="border-b bg-muted/30">
                                 <tr>
                                     <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                        Kode
+                                        <button
+                                            @click="sort('code')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Kode
+                                            <component :is="getSortIcon('code')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                        Pelanggan
+                                        <button
+                                            @click="sort('customer_name')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Pelanggan
+                                            <component :is="getSortIcon('customer_name')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                        Telepon
+                                        <button
+                                            @click="sort('customer_phone')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Telepon
+                                            <component :is="getSortIcon('customer_phone')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                        Jenis
+                                        <button
+                                            @click="sort('type')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Jenis
+                                            <component :is="getSortIcon('type')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                        Status
+                                        <button
+                                            @click="sort('status')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Status
+                                            <component :is="getSortIcon('status')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                        Dibuat
+                                        <button
+                                            @click="sort('created_at')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Dibuat
+                                            <component :is="getSortIcon('created_at')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                         Aksi
@@ -551,9 +640,11 @@ const breadcrumbs = [
                     <div v-if="coupons.last_page > 1" class="border-t p-4">
                         <div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
                             <p class="text-sm text-muted-foreground">
-                                Menampilkan {{ coupons.data.length }} dari {{ coupons.total }} kupon
+                                Menampilkan {{ (coupons.current_page - 1) * coupons.per_page + 1 }} sampai
+                                {{ Math.min(coupons.current_page * coupons.per_page, coupons.total) }} dari
+                                {{ coupons.total }} kupon
                             </p>
-                            <div class="flex gap-2">
+                            <div class="flex items-center gap-2">
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -561,8 +652,25 @@ const breadcrumbs = [
                                     :disabled="coupons.current_page === 1"
                                     @click="router.visit(`/coupons?${buildQueryString(coupons.current_page - 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
-                                    Sebelumnya
+                                    <ChevronLeft class="h-4 w-4" />
                                 </Button>
+                                
+                                <div class="flex gap-1">
+                                    <template v-for="page in getPageNumbers()" :key="page">
+                                        <Button
+                                            v-if="page !== '...'"
+                                            variant="outline"
+                                            size="sm"
+                                            class="rounded-xl min-w-[2.5rem]"
+                                            :class="{ 'bg-primary text-primary-foreground': page === coupons.current_page }"
+                                            @click="router.visit(`/coupons?${buildQueryString(page)}`, { preserveState: true, preserveScroll: true })"
+                                        >
+                                            {{ page }}
+                                        </Button>
+                                        <span v-else class="px-2 py-1 text-sm text-muted-foreground">...</span>
+                                    </template>
+                                </div>
+                                
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -570,7 +678,7 @@ const breadcrumbs = [
                                     :disabled="coupons.current_page === coupons.last_page"
                                     @click="router.visit(`/coupons?${buildQueryString(coupons.current_page + 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
-                                    Selanjutnya
+                                    <ChevronRight class="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>

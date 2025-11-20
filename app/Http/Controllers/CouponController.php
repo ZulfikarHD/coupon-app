@@ -20,11 +20,25 @@ class CouponController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = Coupon::with('user')
-            ->orderBy('created_at', 'desc');
+        $query = Coupon::with('user');
 
         // Apply filters using service
         $this->couponService->applyFilters($query, $request);
+
+        // Apply sorting
+        $sortColumn = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        
+        // Validate sort column to prevent SQL injection
+        $allowedColumns = ['code', 'customer_name', 'customer_phone', 'type', 'status', 'created_at', 'expires_at'];
+        if (!in_array($sortColumn, $allowedColumns)) {
+            $sortColumn = 'created_at';
+        }
+        
+        // Validate sort direction
+        $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+        
+        $query->orderBy($sortColumn, $sortDirection);
 
         $coupons = $query->paginate(20)->withQueryString();
 
@@ -46,6 +60,8 @@ class CouponController extends Controller
                 'date_to',
                 'expires_from',
                 'expires_to',
+                'sort',
+                'direction',
             ]),
         ]);
     }

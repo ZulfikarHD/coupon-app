@@ -18,7 +18,12 @@ import {
     Loader2,
     Clock,
     Users,
-    Eye
+    Eye,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { type BreadcrumbItem } from '@/types';
@@ -56,12 +61,31 @@ interface FrequentCustomer {
 
 interface Props {
     summaryStats: SummaryStats;
-    topTypes: TopType[];
+    topTypes: TopType[] | {
+        data: TopType[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
     dailyUsage: DailyUsage[];
-    frequentCustomers: FrequentCustomer[];
+    frequentCustomers: FrequentCustomer[] | {
+        data: FrequentCustomer[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
     filters: {
         date_from: string;
         date_to: string;
+        top_types_page?: number;
+        customers_page?: number;
+        per_page?: number;
+        top_types_sort?: string;
+        top_types_direction?: string;
+        customers_sort?: string;
+        customers_direction?: string;
     };
 }
 
@@ -81,9 +105,134 @@ const breadcrumbs: BreadcrumbItem[] = [
 const form = useForm({
     date_from: props.filters.date_from,
     date_to: props.filters.date_to,
+    top_types_page: props.filters.top_types_page || 1,
+    customers_page: props.filters.customers_page || 1,
+    per_page: props.filters.per_page || 10,
+    top_types_sort: props.filters.top_types_sort || 'created_count',
+    top_types_direction: props.filters.top_types_direction || 'desc',
+    customers_sort: props.filters.customers_sort || 'total_coupons',
+    customers_direction: props.filters.customers_direction || 'desc',
 });
 
 const isLoading = computed(() => form.processing);
+
+const isTopTypesPaginated = computed(() => {
+    return typeof props.topTypes === 'object' && 'data' in props.topTypes;
+});
+
+const isCustomersPaginated = computed(() => {
+    return typeof props.frequentCustomers === 'object' && 'data' in props.frequentCustomers;
+});
+
+const topTypesData = computed(() => {
+    return isTopTypesPaginated.value ? (props.topTypes as any).data : props.topTypes;
+});
+
+const customersData = computed(() => {
+    return isCustomersPaginated.value ? (props.frequentCustomers as any).data : props.frequentCustomers;
+});
+
+const topTypesPagination = computed(() => {
+    return isTopTypesPaginated.value ? props.topTypes as any : null;
+});
+
+const customersPagination = computed(() => {
+    return isCustomersPaginated.value ? props.frequentCustomers as any : null;
+});
+
+const sortTopTypes = (column: string) => {
+    const currentSort = form.top_types_sort || 'created_count';
+    const currentDirection = form.top_types_direction || 'desc';
+    const newDirection = currentSort === column && currentDirection === 'asc' ? 'desc' : 'asc';
+    form.top_types_sort = column;
+    form.top_types_direction = newDirection;
+    form.top_types_page = 1; // Reset to first page when sorting
+    applyFilters();
+};
+
+const sortCustomers = (column: string) => {
+    const currentSort = form.customers_sort || 'total_coupons';
+    const currentDirection = form.customers_direction || 'desc';
+    const newDirection = currentSort === column && currentDirection === 'asc' ? 'desc' : 'asc';
+    form.customers_sort = column;
+    form.customers_direction = newDirection;
+    form.customers_page = 1; // Reset to first page when sorting
+    applyFilters();
+};
+
+const getTopTypesSortIcon = (column: string) => {
+    const currentSort = form.top_types_sort;
+    const currentDirection = form.top_types_direction;
+    if (currentSort !== column) {
+        return ArrowUpDown;
+    }
+    return currentDirection === 'asc' ? ArrowUp : ArrowDown;
+};
+
+const getCustomersSortIcon = (column: string) => {
+    const currentSort = form.customers_sort;
+    const currentDirection = form.customers_direction;
+    if (currentSort !== column) {
+        return ArrowUpDown;
+    }
+    return currentDirection === 'asc' ? ArrowUp : ArrowDown;
+};
+
+const buildPaginationQuery = (type: 'top_types' | 'customers', page: number): string => {
+    const params = new URLSearchParams();
+    params.set('date_from', form.date_from);
+    params.set('date_to', form.date_to);
+    params.set('per_page', String(form.per_page));
+    
+    if (type === 'top_types') {
+        params.set('top_types_page', String(page));
+        if (form.top_types_sort) params.set('top_types_sort', form.top_types_sort);
+        if (form.top_types_direction) params.set('top_types_direction', form.top_types_direction);
+        if (form.customers_page) params.set('customers_page', String(form.customers_page));
+        if (form.customers_sort) params.set('customers_sort', form.customers_sort);
+        if (form.customers_direction) params.set('customers_direction', form.customers_direction);
+    } else {
+        params.set('customers_page', String(page));
+        if (form.top_types_page) params.set('top_types_page', String(form.top_types_page));
+        if (form.top_types_sort) params.set('top_types_sort', form.top_types_sort);
+        if (form.top_types_direction) params.set('top_types_direction', form.top_types_direction);
+        if (form.customers_sort) params.set('customers_sort', form.customers_sort);
+        if (form.customers_direction) params.set('customers_direction', form.customers_direction);
+    }
+    
+    return params.toString();
+};
+
+const getPageNumbers = (pagination: any): (number | string)[] => {
+    if (!pagination) return [];
+    const current = pagination.current_page;
+    const last = pagination.last_page;
+    const pages: (number | string)[] = [];
+    
+    if (last <= 7) {
+        for (let i = 1; i <= last; i++) {
+            pages.push(i);
+        }
+    } else {
+        if (current <= 3) {
+            for (let i = 1; i <= 4; i++) pages.push(i);
+            pages.push('...');
+            pages.push(last);
+        } else if (current >= last - 2) {
+            pages.push(1);
+            pages.push('...');
+            for (let i = last - 3; i <= last; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            pages.push('...');
+            for (let i = current - 1; i <= current + 1; i++) pages.push(i);
+            pages.push('...');
+            pages.push(last);
+        }
+    }
+    
+    return pages;
+};
 
 const applyFilters = () => {
     form.get('/reports', {
@@ -99,6 +248,12 @@ const resetFilters = () => {
 
     form.date_from = thirtyDaysAgo.toISOString().split('T')[0];
     form.date_to = today.toISOString().split('T')[0];
+    form.top_types_page = 1;
+    form.customers_page = 1;
+    form.top_types_sort = 'created_count';
+    form.top_types_direction = 'desc';
+    form.customers_sort = 'total_coupons';
+    form.customers_direction = 'desc';
     applyFilters();
 };
 
@@ -352,7 +507,7 @@ const viewCustomerCoupons = (phone: string) => {
                 </CardHeader>
                 <CardContent>
                     <EmptyState
-                        v-if="topTypes.length === 0"
+                        v-if="topTypesData.length === 0"
                         :icon="Ticket"
                         title="Tidak ada data kupon"
                         description="Tidak ada data kupon dalam periode yang dipilih"
@@ -362,25 +517,55 @@ const viewCustomerCoupons = (phone: string) => {
                             <thead>
                                 <tr class="border-b border-border">
                                     <th class="text-left p-3 text-sm font-semibold text-muted-foreground">
-                                        Tipe Kupon
+                                        <button
+                                            @click="sortTopTypes('type')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Tipe Kupon
+                                            <component :is="getTopTypesSortIcon('type')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
-                                        Dibuat
+                                        <button
+                                            @click="sortTopTypes('created_count')"
+                                            class="flex items-center justify-end gap-2 hover:text-foreground transition-colors ml-auto"
+                                        >
+                                            Dibuat
+                                            <component :is="getTopTypesSortIcon('created_count')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
-                                        Terpakai
+                                        <button
+                                            @click="sortTopTypes('used_count')"
+                                            class="flex items-center justify-end gap-2 hover:text-foreground transition-colors ml-auto"
+                                        >
+                                            Terpakai
+                                            <component :is="getTopTypesSortIcon('used_count')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
-                                        Kedaluwarsa
+                                        <button
+                                            @click="sortTopTypes('expired_count')"
+                                            class="flex items-center justify-end gap-2 hover:text-foreground transition-colors ml-auto"
+                                        >
+                                            Kedaluwarsa
+                                            <component :is="getTopTypesSortIcon('expired_count')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
-                                        Tingkat Penggunaan
+                                        <button
+                                            @click="sortTopTypes('usage_rate')"
+                                            class="flex items-center justify-end gap-2 hover:text-foreground transition-colors ml-auto"
+                                        >
+                                            Tingkat Penggunaan
+                                            <component :is="getTopTypesSortIcon('usage_rate')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr
-                                    v-for="(type, index) in topTypes"
+                                    v-for="(type, index) in topTypesData"
                                     :key="index"
                                     class="border-b border-border/50 hover:bg-muted/50 transition-colors"
                                 >
@@ -414,6 +599,54 @@ const viewCustomerCoupons = (phone: string) => {
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Pagination for Top Types -->
+                    <div v-if="topTypesPagination && topTypesPagination.last_page > 1" class="border-t p-4">
+                        <div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
+                            <p class="text-sm text-muted-foreground">
+                                Menampilkan {{ (topTypesPagination.current_page - 1) * topTypesPagination.per_page + 1 }} sampai
+                                {{ Math.min(topTypesPagination.current_page * topTypesPagination.per_page, topTypesPagination.total) }} dari
+                                {{ topTypesPagination.total }} tipe
+                            </p>
+                            <div class="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="rounded-xl"
+                                    :disabled="topTypesPagination.current_page === 1"
+                                    @click="router.get(`/reports?${buildPaginationQuery('top_types', topTypesPagination.current_page - 1)}`, { preserveState: true, preserveScroll: true })"
+                                >
+                                    <ChevronLeft class="h-4 w-4" />
+                                </Button>
+                                
+                                <div class="flex gap-1">
+                                    <template v-for="page in getPageNumbers(topTypesPagination)" :key="page">
+                                        <Button
+                                            v-if="page !== '...'"
+                                            variant="outline"
+                                            size="sm"
+                                            class="rounded-xl min-w-[2.5rem]"
+                                            :class="{ 'bg-primary text-primary-foreground': page === topTypesPagination.current_page }"
+                                            @click="router.get(`/reports?${buildPaginationQuery('top_types', page)}`, { preserveState: true, preserveScroll: true })"
+                                        >
+                                            {{ page }}
+                                        </Button>
+                                        <span v-else class="px-2 py-1 text-sm text-muted-foreground">...</span>
+                                    </template>
+                                </div>
+                                
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="rounded-xl"
+                                    :disabled="topTypesPagination.current_page === topTypesPagination.last_page"
+                                    @click="router.get(`/reports?${buildPaginationQuery('top_types', topTypesPagination.current_page + 1)}`, { preserveState: true, preserveScroll: true })"
+                                >
+                                    <ChevronRight class="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -430,7 +663,7 @@ const viewCustomerCoupons = (phone: string) => {
                 </CardHeader>
                 <CardContent>
                     <EmptyState
-                        v-if="frequentCustomers.length === 0"
+                        v-if="customersData.length === 0"
                         :icon="Users"
                         title="Tidak ada data pelanggan"
                         description="Tidak ada data pelanggan dalam periode yang dipilih"
@@ -440,22 +673,52 @@ const viewCustomerCoupons = (phone: string) => {
                             <thead>
                                 <tr class="border-b border-border">
                                     <th class="text-left p-3 text-sm font-semibold text-muted-foreground">
-                                        Nama Pelanggan
+                                        <button
+                                            @click="sortCustomers('customer_name')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Nama Pelanggan
+                                            <component :is="getCustomersSortIcon('customer_name')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="text-left p-3 text-sm font-semibold text-muted-foreground">
                                         No. Telepon
                                     </th>
                                     <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
-                                        Total Kupon
+                                        <button
+                                            @click="sortCustomers('total_coupons')"
+                                            class="flex items-center justify-end gap-2 hover:text-foreground transition-colors ml-auto"
+                                        >
+                                            Total Kupon
+                                            <component :is="getCustomersSortIcon('total_coupons')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
-                                        Terpakai
+                                        <button
+                                            @click="sortCustomers('total_used')"
+                                            class="flex items-center justify-end gap-2 hover:text-foreground transition-colors ml-auto"
+                                        >
+                                            Terpakai
+                                            <component :is="getCustomersSortIcon('total_used')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
-                                        Tingkat Penggunaan
+                                        <button
+                                            @click="sortCustomers('usage_rate')"
+                                            class="flex items-center justify-end gap-2 hover:text-foreground transition-colors ml-auto"
+                                        >
+                                            Tingkat Penggunaan
+                                            <component :is="getCustomersSortIcon('usage_rate')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="text-left p-3 text-sm font-semibold text-muted-foreground">
-                                        Kupon Terakhir
+                                        <button
+                                            @click="sortCustomers('last_coupon_date')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Kupon Terakhir
+                                            <component :is="getCustomersSortIcon('last_coupon_date')" class="h-3 w-3" />
+                                        </button>
                                     </th>
                                     <th class="text-center p-3 text-sm font-semibold text-muted-foreground">
                                         Aksi
@@ -464,7 +727,7 @@ const viewCustomerCoupons = (phone: string) => {
                             </thead>
                             <tbody>
                                 <tr
-                                    v-for="(customer, index) in frequentCustomers"
+                                    v-for="(customer, index) in customersData"
                                     :key="index"
                                     class="border-b border-border/50 hover:bg-muted/50 transition-colors"
                                 >
@@ -509,6 +772,54 @@ const viewCustomerCoupons = (phone: string) => {
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- Pagination for Frequent Customers -->
+                    <div v-if="customersPagination && customersPagination.last_page > 1" class="border-t p-4">
+                        <div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
+                            <p class="text-sm text-muted-foreground">
+                                Menampilkan {{ (customersPagination.current_page - 1) * customersPagination.per_page + 1 }} sampai
+                                {{ Math.min(customersPagination.current_page * customersPagination.per_page, customersPagination.total) }} dari
+                                {{ customersPagination.total }} pelanggan
+                            </p>
+                            <div class="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="rounded-xl"
+                                    :disabled="customersPagination.current_page === 1"
+                                    @click="router.get(`/reports?${buildPaginationQuery('customers', customersPagination.current_page - 1)}`, { preserveState: true, preserveScroll: true })"
+                                >
+                                    <ChevronLeft class="h-4 w-4" />
+                                </Button>
+                                
+                                <div class="flex gap-1">
+                                    <template v-for="page in getPageNumbers(customersPagination)" :key="page">
+                                        <Button
+                                            v-if="page !== '...'"
+                                            variant="outline"
+                                            size="sm"
+                                            class="rounded-xl min-w-[2.5rem]"
+                                            :class="{ 'bg-primary text-primary-foreground': page === customersPagination.current_page }"
+                                            @click="router.get(`/reports?${buildPaginationQuery('customers', page)}`, { preserveState: true, preserveScroll: true })"
+                                        >
+                                            {{ page }}
+                                        </Button>
+                                        <span v-else class="px-2 py-1 text-sm text-muted-foreground">...</span>
+                                    </template>
+                                </div>
+                                
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="rounded-xl"
+                                    :disabled="customersPagination.current_page === customersPagination.last_page"
+                                    @click="router.get(`/reports?${buildPaginationQuery('customers', customersPagination.current_page + 1)}`, { preserveState: true, preserveScroll: true })"
+                                >
+                                    <ChevronRight class="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
