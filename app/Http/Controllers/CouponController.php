@@ -21,27 +21,90 @@ class CouponController extends Controller
         $query = Coupon::with('user')
             ->orderBy('created_at', 'desc');
 
-        // Status filter
-        if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
+        // Status filter (can be array for multi-select)
+        // Frontend sends multiple status=active&status=used parameters
+        // Manually parse query string to get all status values (parse_str overwrites duplicates)
+        $statusArray = [];
+        $queryString = $request->getQueryString();
+        
+        if ($queryString) {
+            // Manually extract all status=value pairs from query string
+            // Handle both status=value&other=param and status=value (at end)
+            preg_match_all('/[?&]status=([^&]*)/', '?' . $queryString, $matches);
+            if (!empty($matches[1])) {
+                $statusArray = array_map(function($value) {
+                    return urldecode(trim($value));
+                }, $matches[1]);
+            }
+        }
+        
+        // Fallback: check request input (might work if Laravel parsed it as array)
+        if (empty($statusArray)) {
+            $statusInput = $request->input('status');
+            if ($statusInput) {
+                $statusArray = is_array($statusInput) ? $statusInput : [$statusInput];
+            }
+        }
+        
+        if (!empty($statusArray)) {
+            // Filter out 'all' and empty values, and trim whitespace
+            $statusArray = array_filter(array_map('trim', $statusArray), function($s) {
+                return $s !== 'all' && !empty($s);
+            });
+            
+            if (count($statusArray) > 0) {
+                $query->whereIn('status', array_values($statusArray));
+            }
         }
 
-        // Search filter (code, name, phone)
+        // Basic search filter (code, name, phone, type)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%")
                     ->orWhere('customer_name', 'like', "%{$search}%")
-                    ->orWhere('customer_phone', 'like', "%{$search}%");
+                    ->orWhere('customer_phone', 'like', "%{$search}%")
+                    ->orWhere('type', 'like', "%{$search}%");
             });
         }
 
-        // Date range filter
+        // Advanced filters
+        // Customer name filter
+        if ($request->filled('customer_name')) {
+            $query->where('customer_name', 'like', "%{$request->customer_name}%");
+        }
+
+        // Customer phone filter
+        if ($request->filled('customer_phone')) {
+            // Normalize phone for search
+            $phone = preg_replace('/[^0-9]/', '', $request->customer_phone);
+            if (substr($phone, 0, 1) === '0') {
+                $phone = '62' . substr($phone, 1);
+            } elseif (substr($phone, 0, 2) !== '62') {
+                $phone = '62' . $phone;
+            }
+            $query->where('customer_phone', 'like', "%{$phone}%");
+        }
+
+        // Coupon type filter
+        if ($request->filled('coupon_type')) {
+            $query->where('type', 'like', "%{$request->coupon_type}%");
+        }
+
+        // Created date range filter
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
         if ($request->filled('date_to')) {
             $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        // Expires date range filter
+        if ($request->filled('expires_from')) {
+            $query->whereDate('expires_at', '>=', $request->expires_from);
+        }
+        if ($request->filled('expires_to')) {
+            $query->whereDate('expires_at', '<=', $request->expires_to);
         }
 
         $coupons = $query->paginate(20)->withQueryString();
@@ -54,7 +117,17 @@ class CouponController extends Controller
 
         return Inertia::render('coupons/Index', [
             'coupons' => $coupons,
-            'filters' => $request->only(['status', 'search', 'date_from', 'date_to']),
+            'filters' => $request->only([
+                'status',
+                'search',
+                'customer_name',
+                'customer_phone',
+                'coupon_type',
+                'date_from',
+                'date_to',
+                'expires_from',
+                'expires_to',
+            ]),
         ]);
     }
 

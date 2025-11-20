@@ -5,8 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Filter, Eye, X } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Plus, Search, Filter, Eye, X, ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 interface Coupon {
     id: number;
@@ -29,21 +32,41 @@ interface Props {
         total: number;
     };
     filters: {
-        status?: string;
+        status?: string | string[];
         search?: string;
+        customer_name?: string;
+        customer_phone?: string;
+        coupon_type?: string;
         date_from?: string;
         date_to?: string;
+        expires_from?: string;
+        expires_to?: string;
     };
 }
 
 const props = defineProps<Props>();
 
+// Parse status filter - can be string or array
+const parseStatusFilter = (status: string | string[] | undefined): string[] => {
+    if (!status) return [];
+    if (Array.isArray(status)) return status;
+    if (status === 'all') return [];
+    return [status];
+};
+
 const form = useForm({
-    status: props.filters.status || 'all',
+    status: parseStatusFilter(props.filters.status),
     search: props.filters.search || '',
+    customer_name: props.filters.customer_name || '',
+    customer_phone: props.filters.customer_phone || '',
+    coupon_type: props.filters.coupon_type || '',
     date_from: props.filters.date_from || '',
     date_to: props.filters.date_to || '',
+    expires_from: props.filters.expires_from || '',
+    expires_to: props.filters.expires_to || '',
 });
+
+const showAdvancedSearch = ref(false);
 
 const statusColors = {
     active: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
@@ -57,8 +80,27 @@ const statusLabels = {
     expired: 'Kedaluwarsa',
 };
 
+const statusOptions = [
+    { value: 'active', label: 'Aktif' },
+    { value: 'used', label: 'Terpakai' },
+    { value: 'expired', label: 'Kedaluwarsa' },
+];
+
+const toggleStatus = (status: string) => {
+    const currentStatus = Array.isArray(form.status) ? form.status : [];
+    if (currentStatus.includes(status)) {
+        form.status = currentStatus.filter((s) => s !== status);
+    } else {
+        form.status = [...currentStatus, status];
+    }
+    applyFilters();
+};
+
 const applyFilters = () => {
-    form.get('/coupons', {
+    const queryString = buildQueryString();
+    const url = queryString ? `/coupons?${queryString}` : '/coupons';
+    
+    router.visit(url, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
@@ -67,7 +109,16 @@ const applyFilters = () => {
 
 const clearFilters = () => {
     form.reset();
-    form.get('/coupons', {
+    form.status = [];
+    form.search = '';
+    form.customer_name = '';
+    form.customer_phone = '';
+    form.coupon_type = '';
+    form.date_from = '';
+    form.date_to = '';
+    form.expires_from = '';
+    form.expires_to = '';
+    router.get('/coupons', {}, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
@@ -75,8 +126,95 @@ const clearFilters = () => {
 };
 
 const hasActiveFilters = computed(() => {
-    return form.status !== 'all' || form.search || form.date_from || form.date_to;
+    return (
+        (Array.isArray(form.status) && form.status.length > 0) ||
+        form.search ||
+        form.customer_name ||
+        form.customer_phone ||
+        form.coupon_type ||
+        form.date_from ||
+        form.date_to ||
+        form.expires_from ||
+        form.expires_to
+    );
 });
+
+const activeFilterBadges = computed(() => {
+    const badges: Array<{ label: string; key: string }> = [];
+    
+    if (Array.isArray(form.status) && form.status.length > 0) {
+        form.status.forEach((s) => {
+            badges.push({ label: statusLabels[s as keyof typeof statusLabels], key: `status-${s}` });
+        });
+    }
+    
+    if (form.search) {
+        badges.push({ label: `Cari: ${form.search}`, key: 'search' });
+    }
+    
+    if (form.customer_name) {
+        badges.push({ label: `Nama: ${form.customer_name}`, key: 'customer_name' });
+    }
+    
+    if (form.customer_phone) {
+        badges.push({ label: `Telepon: ${form.customer_phone}`, key: 'customer_phone' });
+    }
+    
+    if (form.coupon_type) {
+        badges.push({ label: `Jenis: ${form.coupon_type}`, key: 'coupon_type' });
+    }
+    
+    if (form.date_from) {
+        badges.push({ label: `Dibuat dari: ${form.date_from}`, key: 'date_from' });
+    }
+    
+    if (form.date_to) {
+        badges.push({ label: `Dibuat sampai: ${form.date_to}`, key: 'date_to' });
+    }
+    
+    if (form.expires_from) {
+        badges.push({ label: `Kadaluwarsa dari: ${form.expires_from}`, key: 'expires_from' });
+    }
+    
+    if (form.expires_to) {
+        badges.push({ label: `Kadaluwarsa sampai: ${form.expires_to}`, key: 'expires_to' });
+    }
+    
+    return badges;
+});
+
+const removeFilter = (key: string) => {
+    if (key.startsWith('status-')) {
+        const status = key.replace('status-', '');
+        const currentStatus = Array.isArray(form.status) ? form.status : [];
+        form.status = currentStatus.filter((s) => s !== status);
+        applyFilters();
+    } else {
+        (form as any)[key] = '';
+        applyFilters();
+    }
+};
+
+const buildQueryString = (page?: number): string => {
+    const searchParams = new URLSearchParams();
+    
+    // Laravel automatically parses multiple status=value parameters as an array
+    // So we use 'status' without brackets
+    if (Array.isArray(form.status) && form.status.length > 0) {
+        form.status.forEach((s) => searchParams.append('status', s));
+    }
+    if (form.search) searchParams.set('search', form.search);
+    if (form.customer_name) searchParams.set('customer_name', form.customer_name);
+    if (form.customer_phone) searchParams.set('customer_phone', form.customer_phone);
+    if (form.coupon_type) searchParams.set('coupon_type', form.coupon_type);
+    if (form.date_from) searchParams.set('date_from', form.date_from);
+    if (form.date_to) searchParams.set('date_to', form.date_to);
+    if (form.expires_from) searchParams.set('expires_from', form.expires_from);
+    if (form.expires_to) searchParams.set('expires_to', form.expires_to);
+    if (page) searchParams.set('page', String(page));
+    
+    return searchParams.toString();
+};
 
 const breadcrumbs = [
     {
@@ -122,40 +260,47 @@ const breadcrumbs = [
                 </CardHeader>
                 <CardContent>
                     <form @submit.prevent="applyFilters" class="space-y-4">
+                        <!-- Basic Search -->
                         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             <!-- Search -->
                             <div class="space-y-2 sm:col-span-2 lg:col-span-1">
-                                <label class="text-sm font-medium">Cari</label>
+                                <Label class="text-sm font-medium">Cari</Label>
                                 <div class="relative">
                                     <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                     <Input
                                         v-model="form.search"
                                         type="text"
-                                        placeholder="Kode, nama, atau telepon..."
+                                        placeholder="Kode, nama, telepon, atau jenis..."
                                         class="h-11 pl-10 text-base md:h-10 md:text-sm"
                                         @input="applyFilters"
                                     />
                                 </div>
                             </div>
 
-                            <!-- Status Filter -->
+                            <!-- Status Filter (Quick) -->
                             <div class="space-y-2">
-                                <label class="text-sm font-medium">Status</label>
-                                <select
-                                    v-model="form.status"
-                                    class="flex h-11 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:h-10 md:text-sm"
-                                    @change="applyFilters"
-                                >
-                                    <option value="all">Semua</option>
-                                    <option value="active">Aktif</option>
-                                    <option value="used">Terpakai</option>
-                                    <option value="expired">Kedaluwarsa</option>
-                                </select>
+                                <Label class="text-sm font-medium">Status</Label>
+                                <div class="flex flex-wrap gap-2">
+                                    <label
+                                        v-for="option in statusOptions"
+                                        :key="option.value"
+                                        class="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-muted"
+                                        :class="{
+                                            'bg-primary text-primary-foreground': Array.isArray(form.status) && form.status.includes(option.value),
+                                        }"
+                                    >
+                                        <Checkbox
+                                            :checked="Array.isArray(form.status) && form.status.includes(option.value)"
+                                            @update:checked="toggleStatus(option.value)"
+                                        />
+                                        <span>{{ option.label }}</span>
+                                    </label>
+                                </div>
                             </div>
 
                             <!-- Date From -->
                             <div class="space-y-2">
-                                <label class="text-sm font-medium">Dari Tanggal</label>
+                                <Label class="text-sm font-medium">Dibuat Dari</Label>
                                 <Input
                                     v-model="form.date_from"
                                     type="date"
@@ -166,7 +311,7 @@ const breadcrumbs = [
 
                             <!-- Date To -->
                             <div class="space-y-2">
-                                <label class="text-sm font-medium">Sampai Tanggal</label>
+                                <Label class="text-sm font-medium">Dibuat Sampai</Label>
                                 <Input
                                     v-model="form.date_to"
                                     type="date"
@@ -174,6 +319,108 @@ const breadcrumbs = [
                                     @change="applyFilters"
                                 />
                             </div>
+                        </div>
+
+                        <!-- Advanced Search Collapsible -->
+                        <Collapsible v-model="showAdvancedSearch">
+                            <CollapsibleTrigger as-child>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    class="w-full justify-between"
+                                >
+                                    <span>Pencarian Lanjutan</span>
+                                    <ChevronDown v-if="!showAdvancedSearch" class="h-4 w-4" />
+                                    <ChevronUp v-else class="h-4 w-4" />
+                                </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent class="mt-4 space-y-4">
+                                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    <!-- Customer Name -->
+                                    <div class="space-y-2">
+                                        <Label for="customer_name" class="text-sm font-medium">Nama Pelanggan</Label>
+                                        <Input
+                                            id="customer_name"
+                                            v-model="form.customer_name"
+                                            type="text"
+                                            placeholder="Nama pelanggan..."
+                                            class="h-11 text-base md:h-10 md:text-sm"
+                                            @input="applyFilters"
+                                        />
+                                    </div>
+
+                                    <!-- Customer Phone -->
+                                    <div class="space-y-2">
+                                        <Label for="customer_phone" class="text-sm font-medium">Telepon Pelanggan</Label>
+                                        <Input
+                                            id="customer_phone"
+                                            v-model="form.customer_phone"
+                                            type="text"
+                                            placeholder="Nomor telepon..."
+                                            class="h-11 text-base md:h-10 md:text-sm"
+                                            @input="applyFilters"
+                                        />
+                                    </div>
+
+                                    <!-- Coupon Type -->
+                                    <div class="space-y-2">
+                                        <Label for="coupon_type" class="text-sm font-medium">Jenis Kupon</Label>
+                                        <Input
+                                            id="coupon_type"
+                                            v-model="form.coupon_type"
+                                            type="text"
+                                            placeholder="Jenis kupon..."
+                                            class="h-11 text-base md:h-10 md:text-sm"
+                                            @input="applyFilters"
+                                        />
+                                    </div>
+
+                                    <!-- Expires From -->
+                                    <div class="space-y-2">
+                                        <Label for="expires_from" class="text-sm font-medium">Kadaluwarsa Dari</Label>
+                                        <Input
+                                            id="expires_from"
+                                            v-model="form.expires_from"
+                                            type="date"
+                                            class="h-11 text-base md:h-10 md:text-sm"
+                                            @change="applyFilters"
+                                        />
+                                    </div>
+
+                                    <!-- Expires To -->
+                                    <div class="space-y-2">
+                                        <Label for="expires_to" class="text-sm font-medium">Kadaluwarsa Sampai</Label>
+                                        <Input
+                                            id="expires_to"
+                                            v-model="form.expires_to"
+                                            type="date"
+                                            class="h-11 text-base md:h-10 md:text-sm"
+                                            @change="applyFilters"
+                                        />
+                                    </div>
+                                </div>
+                            </CollapsibleContent>
+                        </Collapsible>
+
+                        <!-- Active Filters Badges -->
+                        <div v-if="activeFilterBadges.length > 0" class="flex flex-wrap gap-2">
+                            <Badge
+                                v-for="badge in activeFilterBadges"
+                                :key="badge.key"
+                                variant="outline"
+                                class="gap-1 pr-1"
+                            >
+                                <span>{{ badge.label }}</span>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    class="h-auto p-0 hover:bg-transparent"
+                                    @click="removeFilter(badge.key)"
+                                >
+                                    <X class="h-3 w-3" />
+                                </Button>
+                            </Badge>
                         </div>
 
                         <!-- Clear Filters -->
@@ -186,7 +433,7 @@ const breadcrumbs = [
                                 @click="clearFilters"
                             >
                                 <X class="h-4 w-4" />
-                                Hapus Filter
+                                Hapus Semua Filter
                             </Button>
                         </div>
                     </form>
@@ -320,7 +567,7 @@ const breadcrumbs = [
                                     variant="outline"
                                     size="sm"
                                     :disabled="coupons.current_page === 1"
-                                    @click="router.visit(`/coupons?page=${coupons.current_page - 1}`)"
+                                    @click="router.visit(`/coupons?${buildQueryString(coupons.current_page - 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
                                     Sebelumnya
                                 </Button>
@@ -328,7 +575,7 @@ const breadcrumbs = [
                                     variant="outline"
                                     size="sm"
                                     :disabled="coupons.current_page === coupons.last_page"
-                                    @click="router.visit(`/coupons?page=${coupons.current_page + 1}`)"
+                                    @click="router.visit(`/coupons?${buildQueryString(coupons.current_page + 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
                                     Selanjutnya
                                 </Button>
