@@ -293,24 +293,24 @@ public function getFormattedPhoneAttribute() {
 **So that** I can show it at the store
 
 **Tasks:**
-- [ ] Create public route `/coupon/{code}` (no auth)
-- [ ] Create CouponPublicController
-- [ ] Create `coupons/public.blade.php` with:
-  - Store logo/branding area (placeholder for now)
+- [x] Create public route `/coupon/{code}` (no auth)
+- [x] Create CouponPublicController (using closure route in web.php)
+- [x] Create `coupons/Public.vue` (Inertia Vue component) with:
+  - Store logo/branding area (Gift icon placeholder)
   - Coupon type (large heading)
   - Description (readable text)
   - QR code (large, centered)
-  - Barcode
+  - Barcode (using jsbarcode library)
   - Customer name only (privacy - no phone/email)
   - Expiration date (if set)
   - Status display:
     - If active: Green badge "Aktif"
-    - If used: Gray badge "Sudah Terpakai" + timestamp
+    - If used: Gray badge "Sudah Terpakai" + validated_at timestamp
     - If expired: Red badge "Kedaluwarsa"
-- [ ] Handle invalid coupon codes (404 page)
-- [ ] Make it mobile-first design
-- [ ] Add Open Graph meta tags (for WhatsApp sharing)
-- [ ] Test on actual mobile devices
+- [x] Handle invalid coupon codes (404 page via firstOrFail())
+- [x] Make it mobile-first design
+- [x] Add Open Graph meta tags (for WhatsApp sharing)
+- [ ] Test on actual mobile devices (manual testing required)
 
 **Acceptance Criteria:**
 - Page loads without authentication
