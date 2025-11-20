@@ -35,9 +35,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('scan/Index');
     })->name('scan');
 
-    // API routes for scanning and validation
+    // API endpoint for coupon check (in web routes for session auth)
+    // Called by scanner page - needs session middleware
     Route::get('/api/coupons/{code}/check', [CouponController::class, 'check'])->name('api.coupons.check');
+    
+    // Validation route (web route for CSRF protection)
     Route::post('/coupons/{code}/validate', [CouponController::class, 'validate'])->name('coupons.validate');
+    
+    // Reversal route (cancel coupon usage)
+    Route::post('/coupons/{id}/reverse', [CouponController::class, 'reverse'])->name('coupons.reverse');
 });
 
 require __DIR__.'/settings.php';
