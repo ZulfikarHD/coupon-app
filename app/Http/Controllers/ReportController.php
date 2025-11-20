@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\CouponExport;
 use App\Models\Coupon;
-use App\Models\CouponValidation;
+use App\Services\ReportService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,6 +14,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ReportController extends Controller
 {
+    public function __construct(
+        protected ReportService $reportService
+    ) {}
+
     /**
      * Display the reports dashboard with analytics.
      */
@@ -26,113 +30,11 @@ class ReportController extends Controller
         $dateFromCarbon = Carbon::parse($dateFrom)->startOfDay();
         $dateToCarbon = Carbon::parse($dateTo)->endOfDay();
 
-        // Summary Stats
-        $totalCreated = Coupon::whereBetween('created_at', [$dateFromCarbon, $dateToCarbon])
-            ->count();
-
-        $totalUsed = CouponValidation::where('action', 'used')
-            ->whereBetween('validated_at', [$dateFromCarbon, $dateToCarbon])
-            ->count();
-
-        $redemptionRate = $totalCreated > 0 
-            ? round(($totalUsed / $totalCreated) * 100, 2) 
-            : 0;
-
-        $currentlyActive = Coupon::where('status', Coupon::STATUS_ACTIVE)
-            ->count();
-
-        $totalExpired = Coupon::where('status', Coupon::STATUS_EXPIRED)
-            ->whereBetween('created_at', [$dateFromCarbon, $dateToCarbon])
-            ->count();
-
-        // Top Coupon Types
-        $topTypes = Coupon::select('type')
-            ->selectRaw('COUNT(*) as created_count')
-            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as used_count', [Coupon::STATUS_USED])
-            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as expired_count', [Coupon::STATUS_EXPIRED])
-            ->whereBetween('created_at', [$dateFromCarbon, $dateToCarbon])
-            ->groupBy('type')
-            ->orderByDesc('created_count')
-            ->limit(10)
-            ->get()
-            ->map(function ($type) {
-                $usageRate = $type->created_count > 0 
-                    ? round(($type->used_count / $type->created_count) * 100, 2) 
-                    : 0;
-                
-                return [
-                    'type' => $type->type,
-                    'created_count' => $type->created_count,
-                    'used_count' => $type->used_count,
-                    'expired_count' => $type->expired_count,
-                    'usage_rate' => $usageRate,
-                ];
-            });
-
-        // Daily Usage Chart Data (optional - for future chart implementation)
-        $dailyUsage = CouponValidation::where('action', 'used')
-            ->whereBetween('validated_at', [$dateFromCarbon, $dateToCarbon])
-            ->selectRaw('DATE(validated_at) as date')
-            ->selectRaw('COUNT(*) as count')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get()
-            ->map(function ($day) {
-                return [
-                    'date' => $day->date,
-                    'count' => $day->count,
-                ];
-            });
-
-        // Frequent Customers Report - grouped by phone number
-        $frequentCustomers = Coupon::select('customer_phone')
-            ->selectRaw('MAX(customer_name) as customer_name')
-            ->selectRaw('COUNT(*) as total_coupons')
-            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_used', [Coupon::STATUS_USED])
-            ->selectRaw('MAX(created_at) as last_coupon_date')
-            ->whereBetween('created_at', [$dateFromCarbon, $dateToCarbon])
-            ->groupBy('customer_phone')
-            ->orderByDesc('total_coupons')
-            ->limit(20)
-            ->get()
-            ->map(function ($customer) {
-                $usageRate = $customer->total_coupons > 0 
-                    ? round(($customer->total_used / $customer->total_coupons) * 100, 2) 
-                    : 0;
-                
-                // Format phone number for display
-                $phone = $customer->customer_phone;
-                if (substr($phone, 0, 2) === '62') {
-                    $phone = '0' . substr($phone, 2);
-                }
-                if (strlen($phone) >= 10) {
-                    $formattedPhone = substr($phone, 0, 4) . '-' . substr($phone, 4, 4) . '-' . substr($phone, 8);
-                } else {
-                    $formattedPhone = $phone;
-                }
-                
-                return [
-                    'customer_name' => $customer->customer_name,
-                    'customer_phone' => $customer->customer_phone,
-                    'formatted_phone' => $formattedPhone,
-                    'total_coupons' => $customer->total_coupons,
-                    'total_used' => $customer->total_used,
-                    'usage_rate' => $usageRate,
-                    'last_coupon_date' => $customer->last_coupon_date,
-                ];
-            });
-
         return Inertia::render('reports/Index', [
-            'summaryStats' => [
-                'total_created' => $totalCreated,
-                'total_used' => $totalUsed,
-                'redemption_rate' => $redemptionRate,
-                'currently_active' => $currentlyActive,
-                'total_expired' => $totalExpired,
-            ],
-            'topTypes' => $topTypes,
-            'dailyUsage' => $dailyUsage,
-            'frequentCustomers' => $frequentCustomers,
+            'summaryStats' => $this->reportService->getSummaryStats($dateFromCarbon, $dateToCarbon),
+            'topTypes' => $this->reportService->getTopTypes($dateFromCarbon, $dateToCarbon),
+            'dailyUsage' => $this->reportService->getDailyUsage($dateFromCarbon, $dateToCarbon),
+            'frequentCustomers' => $this->reportService->getFrequentCustomers($dateFromCarbon, $dateToCarbon),
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
