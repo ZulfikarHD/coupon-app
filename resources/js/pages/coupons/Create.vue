@@ -6,6 +6,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, User, Phone, Mail, Link as LinkIcon, Calendar, FileText } from 'lucide-vue-next';
+import { onMounted } from 'vue';
+
+// Helper function to format date as YYYY-MM-DD for date input
+const formatDateForInput = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+// Get today's date for min attribute (function to always get current date)
+const getToday = (): string => formatDateForInput(new Date());
+
+// Get date 2 months from now for initial value
+const getTwoMonthsFromNow = (): string => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 2);
+    return formatDateForInput(date);
+};
 
 const form = useForm({
     type: '',
@@ -15,6 +34,11 @@ const form = useForm({
     customer_email: '',
     customer_social_media: '',
     expires_at: '',
+});
+
+// Set initial date to 2 months from now
+onMounted(() => {
+    form.expires_at = getTwoMonthsFromNow();
 });
 
 const submit = () => {
@@ -200,6 +224,7 @@ const breadcrumbs = [
                                     id="expires_at"
                                     v-model="form.expires_at"
                                     type="date"
+                                    :min="getToday()"
                                     :class="{ 'border-destructive': form.errors.expires_at }"
                                     class="h-11 pl-10 text-base md:h-10 md:text-sm"
                                 />
