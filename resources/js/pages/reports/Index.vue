@@ -139,24 +139,55 @@ const formatDate = (dateString: string): string => {
     });
 };
 
+const isExporting = ref(false);
+const exportFormat = ref<'xlsx' | 'csv' | null>(null);
+
 const exportToExcel = () => {
-    // TODO: Implement in next story (3.3)
+    isExporting.value = true;
+    exportFormat.value = 'xlsx';
     const params = new URLSearchParams({
         format: 'xlsx',
         date_from: form.date_from,
         date_to: form.date_to,
     });
-    window.location.href = `/reports/export?${params.toString()}`;
+    
+    // Create a temporary link to trigger download
+    const link = document.createElement('a');
+    link.href = `/reports/export?${params.toString()}`;
+    link.download = '';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Reset loading state after a delay
+    setTimeout(() => {
+        isExporting.value = false;
+        exportFormat.value = null;
+    }, 2000);
 };
 
 const exportToCSV = () => {
-    // TODO: Implement in next story (3.3)
+    isExporting.value = true;
+    exportFormat.value = 'csv';
     const params = new URLSearchParams({
         format: 'csv',
         date_from: form.date_from,
         date_to: form.date_to,
     });
-    window.location.href = `/reports/export?${params.toString()}`;
+    
+    // Create a temporary link to trigger download
+    const link = document.createElement('a');
+    link.href = `/reports/export?${params.toString()}`;
+    link.download = '';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Reset loading state after a delay
+    setTimeout(() => {
+        isExporting.value = false;
+        exportFormat.value = null;
+    }, 2000);
 };
 </script>
 
@@ -278,19 +309,23 @@ const exportToCSV = () => {
                                 variant="outline"
                                 size="sm"
                                 @click="exportToExcel"
+                                :disabled="isExporting"
                                 class="gap-2"
                             >
-                                <FileSpreadsheet class="h-4 w-4" />
-                                Excel
+                                <Loader2 v-if="isExporting && exportFormat === 'xlsx'" class="h-4 w-4 animate-spin" />
+                                <FileSpreadsheet v-else class="h-4 w-4" />
+                                {{ isExporting && exportFormat === 'xlsx' ? 'Mengekspor...' : 'Excel' }}
                             </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
                                 @click="exportToCSV"
+                                :disabled="isExporting"
                                 class="gap-2"
                             >
-                                <FileText class="h-4 w-4" />
-                                CSV
+                                <Loader2 v-if="isExporting && exportFormat === 'csv'" class="h-4 w-4 animate-spin" />
+                                <FileText v-else class="h-4 w-4" />
+                                {{ isExporting && exportFormat === 'csv' ? 'Mengekspor...' : 'CSV' }}
                             </Button>
                         </div>
                     </div>
