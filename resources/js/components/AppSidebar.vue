@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -14,37 +13,45 @@ import {
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, ChartColumn, Folder, LayoutGrid, Ticket } from 'lucide-vue-next';
+import { ChartColumn, LayoutGrid, ScanLine, Ticket } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
-const mainNavItems: NavItem[] = [
+export interface NavItemWithSubmenu extends NavItem {
+    items?: NavItem[];
+}
+
+const mainNavItems: NavItemWithSubmenu[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
     },
     {
-        title: 'Semua Kupon',
+        title: 'Kupon',
         href: '/coupons',
         icon: Ticket,
+        items: [
+            {
+                title: 'Semua Kupon',
+                href: '/coupons',
+                icon: Ticket,
+            },
+            {
+                title: 'Buat Baru',
+                href: '/coupons/create',
+                icon: Ticket,
+            },
+        ],
+    },
+    {
+        title: 'Scan Kupon',
+        href: '/scan',
+        icon: ScanLine,
     },
     {
         title: 'Laporan',
         href: '/reports',
         icon: ChartColumn,
-    }
-];
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Github Repo',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
     },
 ];
 </script>
@@ -68,7 +75,6 @@ const footerNavItems: NavItem[] = [
         </SidebarContent>
 
         <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
             <NavUser />
         </SidebarFooter>
     </Sidebar>
