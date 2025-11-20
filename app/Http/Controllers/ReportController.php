@@ -84,6 +84,44 @@ class ReportController extends Controller
                 ];
             });
 
+        // Frequent Customers Report - grouped by phone number
+        $frequentCustomers = Coupon::select('customer_phone')
+            ->selectRaw('MAX(customer_name) as customer_name')
+            ->selectRaw('COUNT(*) as total_coupons')
+            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as total_used', [Coupon::STATUS_USED])
+            ->selectRaw('MAX(created_at) as last_coupon_date')
+            ->whereBetween('created_at', [$dateFromCarbon, $dateToCarbon])
+            ->groupBy('customer_phone')
+            ->orderByDesc('total_coupons')
+            ->limit(20)
+            ->get()
+            ->map(function ($customer) {
+                $usageRate = $customer->total_coupons > 0 
+                    ? round(($customer->total_used / $customer->total_coupons) * 100, 2) 
+                    : 0;
+                
+                // Format phone number for display
+                $phone = $customer->customer_phone;
+                if (substr($phone, 0, 2) === '62') {
+                    $phone = '0' . substr($phone, 2);
+                }
+                if (strlen($phone) >= 10) {
+                    $formattedPhone = substr($phone, 0, 4) . '-' . substr($phone, 4, 4) . '-' . substr($phone, 8);
+                } else {
+                    $formattedPhone = $phone;
+                }
+                
+                return [
+                    'customer_name' => $customer->customer_name,
+                    'customer_phone' => $customer->customer_phone,
+                    'formatted_phone' => $formattedPhone,
+                    'total_coupons' => $customer->total_coupons,
+                    'total_used' => $customer->total_used,
+                    'usage_rate' => $usageRate,
+                    'last_coupon_date' => $customer->last_coupon_date,
+                ];
+            });
+
         return Inertia::render('reports/Index', [
             'summaryStats' => [
                 'total_created' => $totalCreated,
@@ -94,6 +132,7 @@ class ReportController extends Controller
             ],
             'topTypes' => $topTypes,
             'dailyUsage' => $dailyUsage,
+            'frequentCustomers' => $frequentCustomers,
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,

@@ -813,35 +813,45 @@ coupon_validations
 
 ---
 
-### User Story 3.4: Frequent Customers Report
+### User Story 3.4: Frequent Customers Report ✅ COMPLETED
 **As an** admin  
 **I want to** see which phone numbers receive coupons most  
 **So that** I can identify loyal customers
 
 **Tasks:**
-- [ ] Add "Pelanggan Sering" section to reports
-- [ ] Query coupons grouped by customer_phone:
+- [x] Add "Pelanggan Sering" section to reports
+- [x] Query coupons grouped by customer_phone:
   - Count total coupons per phone
   - Count used coupons per phone
   - Calculate usage rate per phone
   - Get latest coupon date per phone
-- [ ] Display table:
+- [x] Display table:
   - Customer Name (from latest coupon)
   - Phone
   - Total Coupons Received
   - Total Used
   - Usage Rate %
   - Last Coupon Date
-- [ ] Order by total coupons DESC
-- [ ] Limit to top 20
-- [ ] Apply date range filter (optional)
-- [ ] Add "View All Coupons" link per customer
+- [x] Order by total coupons DESC
+- [x] Limit to top 20
+- [x] Apply date range filter (optional)
+- [x] Add "View All Coupons" link per customer
+
+**Implementation Notes:**
+- Added frequent customers query in `ReportController@index` grouped by `customer_phone`
+- Query calculates total coupons, used coupons, usage rate, and latest coupon date per phone
+- Phone numbers formatted for display using same logic as Coupon model
+- Table displays top 20 customers ordered by total coupons DESC
+- Date range filter applies to frequent customers query
+- "Lihat Kupon" button navigates to coupons index filtered by customer phone
+- Uses shadcn/ui components for consistent styling
+- Color-coded usage rates (green ≥50%, orange ≥25%, red <25%)
 
 **Acceptance Criteria:**
-- Top customers correctly identified
-- Usage rate calculated correctly
-- Can view customer's coupon history
-- Date filter works
+- ✅ Top customers correctly identified
+- ✅ Usage rate calculated correctly
+- ✅ Can view customer's coupon history
+- ✅ Date filter works
 
 **Story Points:** 5
 

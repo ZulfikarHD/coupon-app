@@ -14,7 +14,9 @@ import {
     FileSpreadsheet,
     FileText,
     Loader2,
-    Clock
+    Clock,
+    Users,
+    Eye
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { type BreadcrumbItem } from '@/types';
@@ -40,10 +42,21 @@ interface DailyUsage {
     count: number;
 }
 
+interface FrequentCustomer {
+    customer_name: string;
+    customer_phone: string;
+    formatted_phone: string;
+    total_coupons: number;
+    total_used: number;
+    usage_rate: number;
+    last_coupon_date: string;
+}
+
 interface Props {
     summaryStats: SummaryStats;
     topTypes: TopType[];
     dailyUsage: DailyUsage[];
+    frequentCustomers: FrequentCustomer[];
     filters: {
         date_from: string;
         date_to: string;
@@ -188,6 +201,14 @@ const exportToCSV = () => {
         isExporting.value = false;
         exportFormat.value = null;
     }, 2000);
+};
+
+const viewCustomerCoupons = (phone: string) => {
+    router.get('/coupons', {
+        customer_phone: phone,
+        preserveState: true,
+        preserveScroll: true,
+    });
 };
 </script>
 
@@ -389,6 +410,102 @@ const exportToCSV = () => {
                                         >
                                             {{ type.usage_rate }}%
                                         </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <!-- Frequent Customers Table -->
+            <Card class="border-2">
+                <CardHeader>
+                    <CardTitle class="flex items-center gap-2">
+                        <Users class="h-5 w-5 text-primary" />
+                        Pelanggan Sering
+                    </CardTitle>
+                    <CardDescription>
+                        Top 20 pelanggan berdasarkan jumlah kupon yang diterima dalam periode
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div v-if="frequentCustomers.length === 0" class="py-8 text-center">
+                        <Users class="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                        <p class="text-sm text-muted-foreground">
+                            Tidak ada data pelanggan dalam periode yang dipilih
+                        </p>
+                    </div>
+                    <div v-else class="overflow-x-auto">
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="border-b border-border">
+                                    <th class="text-left p-3 text-sm font-semibold text-muted-foreground">
+                                        Nama Pelanggan
+                                    </th>
+                                    <th class="text-left p-3 text-sm font-semibold text-muted-foreground">
+                                        No. Telepon
+                                    </th>
+                                    <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
+                                        Total Kupon
+                                    </th>
+                                    <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
+                                        Terpakai
+                                    </th>
+                                    <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
+                                        Tingkat Penggunaan
+                                    </th>
+                                    <th class="text-left p-3 text-sm font-semibold text-muted-foreground">
+                                        Kupon Terakhir
+                                    </th>
+                                    <th class="text-center p-3 text-sm font-semibold text-muted-foreground">
+                                        Aksi
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr
+                                    v-for="(customer, index) in frequentCustomers"
+                                    :key="index"
+                                    class="border-b border-border/50 hover:bg-muted/50 transition-colors"
+                                >
+                                    <td class="p-3 text-sm font-medium">
+                                        {{ customer.customer_name }}
+                                    </td>
+                                    <td class="p-3 text-sm text-muted-foreground">
+                                        {{ customer.formatted_phone }}
+                                    </td>
+                                    <td class="p-3 text-sm text-right font-medium">
+                                        {{ customer.total_coupons }}
+                                    </td>
+                                    <td class="p-3 text-sm text-right">
+                                        {{ customer.total_used }}
+                                    </td>
+                                    <td class="p-3 text-sm text-right">
+                                        <span
+                                            :class="{
+                                                'text-green-600 dark:text-green-400': customer.usage_rate >= 50,
+                                                'text-orange-600 dark:text-orange-400': customer.usage_rate >= 25 && customer.usage_rate < 50,
+                                                'text-red-600 dark:text-red-400': customer.usage_rate < 25,
+                                            }"
+                                            class="font-semibold"
+                                        >
+                                            {{ customer.usage_rate }}%
+                                        </span>
+                                    </td>
+                                    <td class="p-3 text-sm text-muted-foreground">
+                                        {{ formatDate(customer.last_coupon_date) }}
+                                    </td>
+                                    <td class="p-3 text-center">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            @click="viewCustomerCoupons(customer.customer_phone)"
+                                            class="gap-2"
+                                        >
+                                            <Eye class="h-4 w-4" />
+                                            Lihat Kupon
+                                        </Button>
                                     </td>
                                 </tr>
                             </tbody>
