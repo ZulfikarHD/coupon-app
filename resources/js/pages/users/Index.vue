@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import { useStatusColors } from '@/composables/useStatusColors';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,15 +82,7 @@ const deleteUser = (userId: number) => {
     });
 };
 
-const roleColors = {
-    admin: 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20',
-    user: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20',
-};
-
-const roleLabels = {
-    admin: 'Admin',
-    user: 'User',
-};
+const { roleLabels } = useStatusColors();
 
 const breadcrumbs = [
     {
@@ -100,18 +96,14 @@ const breadcrumbs = [
     <Head title="User Management" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
             <!-- Header -->
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="space-y-1">
-                    <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">
-                        User Management
-                    </h1>
-                    <p class="text-sm text-muted-foreground md:text-base">
-                        Kelola pengguna sistem
-                    </p>
-                </div>
-                <Button as-child size="lg" class="gap-2">
+                <PageHeader
+                    title="User Management"
+                    description="Kelola pengguna sistem"
+                />
+                <Button as-child size="lg" class="gap-2 rounded-xl">
                     <Link href="/users/create">
                         <Plus class="h-5 w-5" />
                         Tambah User
@@ -120,7 +112,7 @@ const breadcrumbs = [
             </div>
 
             <!-- Filters -->
-            <Card class="border-2">
+            <Card class="border rounded-xl">
                 <CardContent class="pt-6">
                     <form @submit.prevent="applyFilters" class="flex flex-col gap-4 sm:flex-row">
                         <div class="flex-1">
@@ -130,7 +122,7 @@ const breadcrumbs = [
                                     v-model="form.search"
                                     type="text"
                                     placeholder="Cari nama atau email..."
-                                    class="pl-10"
+                                    class="pl-10 rounded-xl"
                                 />
                             </div>
                         </div>
@@ -186,23 +178,22 @@ const breadcrumbs = [
             </Card>
 
             <!-- Users Table -->
-            <Card class="border-2">
-                <CardHeader>
-                    <CardTitle class="flex items-center gap-2">
+            <Card class="border rounded-xl">
+                <CardHeader class="pb-4">
+                    <div class="flex items-center gap-2">
                         <Users class="h-5 w-5 text-primary" />
-                        Daftar User ({{ props.users.total }})
-                    </CardTitle>
-                    <CardDescription>
+                        <CardTitle class="text-lg font-semibold">Daftar User ({{ props.users.total }})</CardTitle>
+                    </div>
+                    <CardDescription class="text-sm mt-1">
                         Total pengguna terdaftar dalam sistem
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div v-if="props.users.data.length === 0" class="py-12 text-center">
-                        <UserIcon class="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <p class="text-sm text-muted-foreground">
-                            Tidak ada user ditemukan
-                        </p>
-                    </div>
+                    <EmptyState
+                        v-if="props.users.data.length === 0"
+                        :icon="UserIcon"
+                        title="Tidak ada user ditemukan"
+                    />
                     <div v-else class="overflow-x-auto">
                         <table class="w-full">
                             <thead>
@@ -245,17 +236,11 @@ const breadcrumbs = [
                                         {{ user.email }}
                                     </td>
                                     <td class="px-4 py-3">
-                                        <Badge
-                                            :class="roleColors[user.role]"
-                                            variant="outline"
-                                            class="border"
-                                        >
-                                            <Shield
-                                                v-if="user.role === 'admin'"
-                                                class="mr-1 h-3 w-3"
-                                            />
-                                            {{ roleLabels[user.role] }}
-                                        </Badge>
+                                        <StatusBadge
+                                            :role="user.role"
+                                            :icon="user.role === 'admin' ? Shield : undefined"
+                                            size="sm"
+                                        />
                                     </td>
                                     <td class="px-4 py-3">
                                         <Badge
@@ -282,6 +267,7 @@ const breadcrumbs = [
                                                 as-child
                                                 variant="ghost"
                                                 size="sm"
+                                                class="rounded-xl"
                                             >
                                                 <Link :href="`/users/${user.id}/edit`">
                                                     <Edit class="h-4 w-4" />
@@ -339,22 +325,24 @@ const breadcrumbs = [
                             {{ props.users.total }} user
                         </div>
                         <div class="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                :disabled="props.users.current_page === 1"
-                                @click="router.get(props.users.current_page - 1 ? `/users?page=${props.users.current_page - 1}` : '/users')"
-                            >
-                                Sebelumnya
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                :disabled="props.users.current_page === props.users.last_page"
-                                @click="router.get(`/users?page=${props.users.current_page + 1}`)"
-                            >
-                                Selanjutnya
-                            </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="rounded-xl"
+                                    :disabled="props.users.current_page === 1"
+                                    @click="router.get(props.users.current_page - 1 ? `/users?page=${props.users.current_page - 1}` : '/users')"
+                                >
+                                    Sebelumnya
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="rounded-xl"
+                                    :disabled="props.users.current_page === props.users.last_page"
+                                    @click="router.get(`/users?page=${props.users.current_page + 1}`)"
+                                >
+                                    Selanjutnya
+                                </Button>
                         </div>
                     </div>
                 </CardContent>

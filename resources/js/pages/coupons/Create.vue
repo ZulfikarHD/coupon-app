@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import InputError from '@/components/InputError.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,26 +80,22 @@ const breadcrumbs = [
     <Head title="Buat Kupon Baru" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:p-6">
-            <!-- Mobile-first header -->
-            <div class="space-y-1">
-                <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">
-                    Buat Kupon Baru
-                </h1>
-                <p class="text-sm text-muted-foreground md:text-base">
-                    Isi informasi kupon dan pelanggan di bawah ini
-                </p>
-            </div>
+        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
+            <!-- Header -->
+            <PageHeader
+                title="Buat Kupon Baru"
+                description="Isi informasi kupon dan pelanggan di bawah ini"
+            />
 
             <form @submit.prevent="submit" class="space-y-6">
                 <!-- Customer Info Section -->
-                <Card class="border-2">
+                <Card class="border rounded-xl">
                     <CardHeader class="pb-4">
                         <div class="flex items-center gap-2">
                             <User class="h-5 w-5 text-primary" />
-                            <CardTitle class="text-lg md:text-xl">Informasi Pelanggan</CardTitle>
+                            <CardTitle class="text-lg font-semibold">Informasi Pelanggan</CardTitle>
                         </div>
-                        <CardDescription class="text-sm">
+                        <CardDescription class="text-sm mt-1">
                             Data pelanggan yang akan menerima kupon
                         </CardDescription>
                     </CardHeader>
@@ -112,11 +110,9 @@ const breadcrumbs = [
                                 type="text"
                                 placeholder="Masukkan nama pelanggan"
                                 :class="{ 'border-destructive': form.errors.customer_name }"
-                                class="h-11 text-base md:h-10 md:text-sm"
+                                class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                             />
-                            <p v-if="form.errors.customer_name" class="text-sm text-destructive">
-                                {{ form.errors.customer_name }}
-                            </p>
+                            <InputError :message="form.errors.customer_name" />
                         </div>
 
                         <div class="space-y-2">
@@ -131,7 +127,7 @@ const breadcrumbs = [
                                     type="tel"
                                     placeholder="0812-3456-7890"
                                     :class="{ 'border-destructive': form.errors.customer_phone }"
-                                    class="h-11 pl-10 text-base md:h-10 md:text-sm"
+                                    class="h-11 pl-10 text-base rounded-xl md:h-10 md:text-sm"
                                 />
                             </div>
                             <p v-if="form.errors.customer_phone" class="text-sm text-destructive">
@@ -151,7 +147,7 @@ const breadcrumbs = [
                                     type="email"
                                     placeholder="pelanggan@example.com"
                                     :class="{ 'border-destructive': form.errors.customer_email }"
-                                    class="h-11 pl-10 text-base md:h-10 md:text-sm"
+                                    class="h-11 pl-10 text-base rounded-xl md:h-10 md:text-sm"
                                 />
                             </div>
                             <p v-if="form.errors.customer_email" class="text-sm text-destructive">
@@ -171,7 +167,7 @@ const breadcrumbs = [
                                     type="text"
                                     placeholder="@username atau link"
                                     :class="{ 'border-destructive': form.errors.customer_social_media }"
-                                    class="h-11 pl-10 text-base md:h-10 md:text-sm"
+                                    class="h-11 pl-10 text-base rounded-xl md:h-10 md:text-sm"
                                 />
                             </div>
                             <p v-if="form.errors.customer_social_media" class="text-sm text-destructive">
@@ -182,13 +178,13 @@ const breadcrumbs = [
                 </Card>
 
                 <!-- Coupon Info Section -->
-                <Card class="border-2">
+                <Card class="border rounded-xl">
                     <CardHeader class="pb-4">
                         <div class="flex items-center gap-2">
                             <FileText class="h-5 w-5 text-primary" />
-                            <CardTitle class="text-lg md:text-xl">Informasi Kupon</CardTitle>
+                            <CardTitle class="text-lg font-semibold">Informasi Kupon</CardTitle>
                         </div>
-                        <CardDescription class="text-sm">
+                        <CardDescription class="text-sm mt-1">
                             Detail kupon yang akan diberikan
                         </CardDescription>
                     </CardHeader>
@@ -203,7 +199,7 @@ const breadcrumbs = [
                                 type="text"
                                 placeholder="Contoh: Gratis 1 Kopi, Diskon 20%, dll"
                                 :class="{ 'border-destructive': form.errors.type }"
-                                class="h-11 text-base md:h-10 md:text-sm"
+                                class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                             />
                             <p v-if="form.errors.type" class="text-sm text-destructive">
                                 {{ form.errors.type }}
@@ -220,7 +216,7 @@ const breadcrumbs = [
                                 rows="4"
                                 placeholder="Jelaskan detail kupon ini..."
                                 :class="[
-                                    'flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+                                    'flex min-h-[80px] w-full rounded-xl border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
                                     form.errors.description ? 'border-destructive' : '',
                                 ]"
                             />
@@ -255,7 +251,7 @@ const breadcrumbs = [
                                     :disabled="neverExpires"
                                     :readonly="neverExpires"
                                     :class="[
-                                        'flex h-11 w-full rounded-md border border-input bg-transparent pl-10 pr-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:h-10 md:text-sm',
+                                        'flex h-11 w-full rounded-xl border border-input bg-transparent pl-10 pr-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:h-10 md:text-sm',
                                         form.errors.expires_at ? 'border-destructive' : '',
                                     ]"
                                 />
@@ -272,15 +268,17 @@ const breadcrumbs = [
                     <Button
                         type="button"
                         variant="outline"
-                        class="h-11 w-full sm:w-auto"
+                        size="lg"
+                        class="h-11 w-full rounded-xl sm:w-auto"
                         @click="$inertia.visit('/coupons')"
                     >
                         Batal
                     </Button>
                     <Button
                         type="submit"
+                        size="lg"
                         :disabled="form.processing"
-                        class="h-11 w-full gap-2 sm:w-auto"
+                        class="h-11 w-full gap-2 rounded-xl sm:w-auto"
                     >
                         <Plus class="h-4 w-4" />
                         <span v-if="form.processing">Membuat...</span>

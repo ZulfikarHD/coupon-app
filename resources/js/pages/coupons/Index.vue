@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import { useStatusColors } from '@/composables/useStatusColors';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Search, Filter, Eye, X, ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { Plus, Search, Filter, Eye, X, ChevronDown, ChevronUp, Ticket } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface Coupon {
@@ -67,18 +71,7 @@ const form = useForm({
 });
 
 const showAdvancedSearch = ref(false);
-
-const statusColors = {
-    active: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
-    used: 'bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20',
-    expired: 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20',
-};
-
-const statusLabels = {
-    active: 'Aktif',
-    used: 'Terpakai',
-    expired: 'Kedaluwarsa',
-};
+const { statusLabels } = useStatusColors();
 
 const statusOptions = [
     { value: 'active', label: 'Aktif' },
@@ -232,20 +225,17 @@ const breadcrumbs = [
     <Head title="Semua Kupon" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
             <!-- Header -->
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="space-y-1">
-                    <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">
-                        Semua Kupon
-                    </h1>
-                    <p class="text-sm text-muted-foreground md:text-base">
-                        Kelola dan lihat semua kupon yang telah dibuat
-                    </p>
-                </div>
+                <PageHeader
+                    title="Semua Kupon"
+                    description="Kelola dan lihat semua kupon yang telah dibuat"
+                />
                 <Button
                     as-child
-                    class="h-11 w-full gap-2 sm:w-auto"
+                    size="lg"
+                    class="h-11 w-full gap-2 rounded-xl sm:w-auto"
                 >
                     <Link href="/coupons/create">
                         <Plus class="h-4 w-4" />
@@ -255,11 +245,11 @@ const breadcrumbs = [
             </div>
 
             <!-- Filters Card -->
-            <Card class="border-2">
+            <Card class="border rounded-xl">
                 <CardHeader class="pb-4">
                     <div class="flex items-center gap-2">
                         <Filter class="h-5 w-5 text-primary" />
-                        <CardTitle class="text-lg md:text-xl">Filter & Pencarian</CardTitle>
+                        <CardTitle class="text-lg font-semibold">Filter & Pencarian</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -275,7 +265,7 @@ const breadcrumbs = [
                                         v-model="form.search"
                                         type="text"
                                         placeholder="Kode, nama, telepon, atau jenis..."
-                                        class="h-11 pl-10 text-base md:h-10 md:text-sm"
+                                        class="h-11 pl-10 text-base rounded-xl md:h-10 md:text-sm"
                                         @input="applyFilters"
                                     />
                                 </div>
@@ -308,7 +298,7 @@ const breadcrumbs = [
                                 <Input
                                     v-model="form.date_from"
                                     type="date"
-                                    class="h-11 text-base md:h-10 md:text-sm"
+                                    class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                                     @change="applyFilters"
                                 />
                             </div>
@@ -348,7 +338,7 @@ const breadcrumbs = [
                                             v-model="form.customer_name"
                                             type="text"
                                             placeholder="Nama pelanggan..."
-                                            class="h-11 text-base md:h-10 md:text-sm"
+                                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                                             @input="applyFilters"
                                         />
                                     </div>
@@ -445,25 +435,23 @@ const breadcrumbs = [
             </Card>
 
             <!-- Coupons Table -->
-            <Card class="border-2">
+            <Card class="border rounded-xl">
                 <CardContent class="p-0">
                     <!-- Mobile View: Cards -->
-                    <div class="block space-y-4 p-4 md:hidden">
+                    <div class="block space-y-3 p-4 md:hidden">
                         <div
                             v-for="coupon in coupons.data"
                             :key="coupon.id"
-                            class="rounded-lg border bg-card p-4 shadow-sm"
+                            class="rounded-xl border bg-card p-4 shadow-sm transition-all duration-200 hover:shadow-md"
                         >
-                            <div class="flex items-start justify-between">
-                                <div class="flex-1 space-y-2">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex-1 space-y-2 min-w-0">
                                     <div>
-                                        <p class="font-semibold text-foreground">{{ coupon.code }}</p>
+                                        <p class="font-semibold text-foreground font-mono">{{ coupon.code }}</p>
                                         <p class="text-sm text-muted-foreground">{{ coupon.customer_name }}</p>
                                     </div>
                                     <div class="flex flex-wrap gap-2">
-                                        <Badge :class="statusColors[coupon.status]">
-                                            {{ statusLabels[coupon.status] }}
-                                        </Badge>
+                                        <StatusBadge :status="coupon.status" size="sm" />
                                         <span class="text-xs text-muted-foreground">
                                             {{ coupon.type }}
                                         </span>
@@ -474,9 +462,9 @@ const breadcrumbs = [
                                 </div>
                                 <Button
                                     as-child
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
-                                    class="ml-2"
+                                    class="rounded-xl flex-shrink-0"
                                 >
                                     <Link :href="`/coupons/${coupon.id}`">
                                         <Eye class="h-4 w-4" />
@@ -489,27 +477,27 @@ const breadcrumbs = [
                     <!-- Desktop View: Table -->
                     <div class="hidden overflow-x-auto md:block">
                         <table class="w-full">
-                            <thead class="border-b bg-muted/50">
+                            <thead class="border-b bg-muted/30">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                         Kode
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                         Pelanggan
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                         Telepon
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                         Jenis
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                         Status
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                         Dibuat
                                     </th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                    <th class="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                         Aksi
                                     </th>
                                 </tr>
@@ -518,13 +506,13 @@ const breadcrumbs = [
                                 <tr
                                     v-for="coupon in coupons.data"
                                     :key="coupon.id"
-                                    class="hover:bg-muted/50 transition-colors"
+                                    class="hover:bg-muted/30 transition-colors duration-150"
                                 >
                                     <td class="whitespace-nowrap px-6 py-4">
-                                        <span class="font-mono font-medium">{{ coupon.code }}</span>
+                                        <span class="font-mono font-semibold text-foreground">{{ coupon.code }}</span>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <span class="font-medium">{{ coupon.customer_name }}</span>
+                                        <span class="font-medium text-foreground">{{ coupon.customer_name }}</span>
                                     </td>
                                     <td class="px-6 py-4">
                                         <span class="text-sm text-muted-foreground">
@@ -532,12 +520,10 @@ const breadcrumbs = [
                                         </span>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <span class="text-sm">{{ coupon.type }}</span>
+                                        <span class="text-sm text-foreground">{{ coupon.type }}</span>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <Badge :class="statusColors[coupon.status]">
-                                            {{ statusLabels[coupon.status] }}
-                                        </Badge>
+                                        <StatusBadge :status="coupon.status" size="sm" />
                                     </td>
                                     <td class="px-6 py-4">
                                         <span class="text-sm text-muted-foreground">
@@ -545,15 +531,16 @@ const breadcrumbs = [
                                         </span>
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-right">
-                                <Button
-                                    as-child
-                                    variant="ghost"
-                                    size="sm"
-                                >
-                                    <Link :href="`/coupons/${coupon.id}`">
-                                        <Eye class="h-4 w-4" />
-                                    </Link>
-                                </Button>
+                                        <Button
+                                            as-child
+                                            variant="ghost"
+                                            size="sm"
+                                            class="rounded-xl"
+                                        >
+                                            <Link :href="`/coupons/${coupon.id}`">
+                                                <Eye class="h-4 w-4" />
+                                            </Link>
+                                        </Button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -570,6 +557,7 @@ const breadcrumbs = [
                                 <Button
                                     variant="outline"
                                     size="sm"
+                                    class="rounded-xl"
                                     :disabled="coupons.current_page === 1"
                                     @click="router.visit(`/coupons?${buildQueryString(coupons.current_page - 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
@@ -578,6 +566,7 @@ const breadcrumbs = [
                                 <Button
                                     variant="outline"
                                     size="sm"
+                                    class="rounded-xl"
                                     :disabled="coupons.current_page === coupons.last_page"
                                     @click="router.visit(`/coupons?${buildQueryString(coupons.current_page + 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
@@ -588,14 +577,12 @@ const breadcrumbs = [
                     </div>
 
                     <!-- Empty State -->
-                    <div v-if="coupons.data.length === 0" class="p-12 text-center">
-                        <p class="text-lg font-medium text-muted-foreground">
-                            Tidak ada kupon ditemukan
-                        </p>
-                        <p class="mt-2 text-sm text-muted-foreground">
-                            Coba ubah filter atau buat kupon baru
-                        </p>
-                    </div>
+                    <EmptyState
+                        v-if="coupons.data.length === 0"
+                        :icon="Ticket"
+                        title="Tidak ada kupon ditemukan"
+                        description="Coba ubah filter atau buat kupon baru"
+                    />
                 </CardContent>
             </Card>
         </div>
