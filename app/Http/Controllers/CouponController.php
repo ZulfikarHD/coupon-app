@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Jobs\GenerateCouponCode;
 use App\Models\Coupon;
+use App\Models\CouponValidation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -155,5 +157,126 @@ class CouponController extends Controller
         return redirect()
             ->route('coupons.index')
             ->with('success', 'Kupon berhasil dihapus!');
+    }
+
+    /**
+     * Check coupon status before validation (API endpoint)
+     */
+    public function check(string $code)
+    {
+        // Extract code from URL if full URL is provided
+        $code = $this->extractCodeFromUrl($code);
+
+        $coupon = Coupon::where('code', $code)->first();
+
+        if (!$coupon) {
+            return response()->json([
+                'exists' => false,
+                'message' => 'Kupon tidak ditemukan',
+            ], 404);
+        }
+
+        $canValidate = $coupon->canBeValidated();
+        $message = '';
+
+        if (!$canValidate) {
+            if ($coupon->status === Coupon::STATUS_USED) {
+                $message = 'Kupon sudah digunakan';
+            } elseif ($coupon->status === Coupon::STATUS_EXPIRED) {
+                $message = 'Kupon sudah kedaluwarsa';
+            } elseif ($coupon->expires_at && $coupon->expires_at->isPast()) {
+                $message = 'Kupon sudah kedaluwarsa';
+            } else {
+                $message = 'Kupon tidak dapat divalidasi';
+            }
+        }
+
+        return response()->json([
+            'exists' => true,
+            'can_validate' => $canValidate,
+            'message' => $message,
+            'coupon' => [
+                'code' => $coupon->code,
+                'type' => $coupon->type,
+                'description' => $coupon->description,
+                'customer_name' => $coupon->customer_name,
+                'status' => $coupon->status,
+                'expires_at' => $coupon->expires_at?->toIso8601String(),
+            ],
+        ], $canValidate ? 200 : 422);
+    }
+
+    /**
+     * Validate (mark as used) a coupon
+     */
+    public function validate(Request $request, string $code)
+    {
+        $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        // Extract code from URL if full URL is provided
+        $code = $this->extractCodeFromUrl($code);
+
+        // Verify password
+        if (!Hash::check($request->password, Auth::user()->password)) {
+            return response()->json([
+                'message' => 'Password salah',
+            ], 401);
+        }
+
+        $coupon = Coupon::where('code', $code)->firstOrFail();
+
+        // Verify coupon can be validated
+        if (!$coupon->canBeValidated()) {
+            if ($coupon->status === Coupon::STATUS_USED) {
+                return response()->json([
+                    'message' => 'Kupon sudah digunakan',
+                ], 422);
+            }
+            if ($coupon->status === Coupon::STATUS_EXPIRED || ($coupon->expires_at && $coupon->expires_at->isPast())) {
+                return response()->json([
+                    'message' => 'Kupon sudah kedaluwarsa',
+                ], 422);
+            }
+            return response()->json([
+                'message' => 'Kupon tidak dapat divalidasi',
+            ], 422);
+        }
+
+        // Update coupon status
+        $coupon->status = Coupon::STATUS_USED;
+        $coupon->save();
+
+        // Create validation record
+        CouponValidation::create([
+            'coupon_id' => $coupon->id,
+            'validated_by' => Auth::id(),
+            'validated_at' => now(),
+            'action' => 'used',
+        ]);
+
+        return response()->json([
+            'message' => 'Kupon berhasil divalidasi',
+            'coupon' => [
+                'code' => $coupon->code,
+                'status' => $coupon->status,
+            ],
+        ], 200);
+    }
+
+    /**
+     * Extract coupon code from URL
+     */
+    private function extractCodeFromUrl(string $input): string
+    {
+        // If it's a full URL, extract the code
+        if (strpos($input, '/coupon/') !== false) {
+            $parts = explode('/coupon/', $input);
+            return end($parts);
+        }
+
+        // If it's just the code, return as is
+        return $input;
     }
 }
