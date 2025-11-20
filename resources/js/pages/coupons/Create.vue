@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, User, Phone, Mail, Link as LinkIcon, Calendar, FileText } from 'lucide-vue-next';
-import { onMounted } from 'vue';
+import { onMounted, ref, watch, computed } from 'vue';
 
 // Helper function to format date as YYYY-MM-DD for date input
 const formatDateForInput = (date: Date): string => {
@@ -16,8 +17,8 @@ const formatDateForInput = (date: Date): string => {
     return `${year}-${month}-${day}`;
 };
 
-// Get today's date for min attribute (function to always get current date)
-const getToday = (): string => formatDateForInput(new Date());
+// Get today's date for min attribute (computed to ensure reactivity)
+const today = computed(() => formatDateForInput(new Date()));
 
 // Get date 2 months from now for initial value
 const getTwoMonthsFromNow = (): string => {
@@ -36,9 +37,22 @@ const form = useForm({
     expires_at: '',
 });
 
+const neverExpires = ref(false);
+
 // Set initial date to 2 months from now
 onMounted(() => {
     form.expires_at = getTwoMonthsFromNow();
+});
+
+// Watch neverExpires checkbox
+watch(neverExpires, (value) => {
+    if (value) {
+        // If "Never expires" is checked, clear the expiration date
+        form.expires_at = '';
+    } else {
+        // If unchecked, set to 2 months from now
+        form.expires_at = getTwoMonthsFromNow();
+    }
 });
 
 const submit = () => {
@@ -215,18 +229,33 @@ const breadcrumbs = [
                         </div>
 
                         <div class="space-y-2">
+                            <div class="flex items-center gap-2 mb-2">
+                                <Checkbox
+                                    id="never_expires"
+                                    v-model:checked="neverExpires"
+                                />
+                                <Label
+                                    for="never_expires"
+                                    class="text-sm font-medium cursor-pointer"
+                                >
+                                    Tidak pernah kedaluwarsa
+                                </Label>
+                            </div>
                             <Label for="expires_at" class="text-sm font-medium">
                                 Tanggal Kedaluwarsa (Opsional)
                             </Label>
                             <div class="relative">
-                                <Calendar class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                                <Input
+                                <Calendar class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                                <input
                                     id="expires_at"
                                     v-model="form.expires_at"
                                     type="date"
-                                    :min="getToday()"
-                                    :class="{ 'border-destructive': form.errors.expires_at }"
-                                    class="h-11 pl-10 text-base md:h-10 md:text-sm"
+                                    :min="today"
+                                    :disabled="neverExpires"
+                                    :class="[
+                                        'flex h-11 w-full rounded-md border border-input bg-transparent pl-10 pr-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:h-10 md:text-sm',
+                                        form.errors.expires_at ? 'border-destructive' : '',
+                                    ]"
                                 />
                             </div>
                             <p v-if="form.errors.expires_at" class="text-sm text-destructive">
