@@ -31,6 +31,7 @@ interface TopType {
     type: string;
     created_count: number;
     used_count: number;
+    expired_count: number;
     usage_rate: number;
 }
 
@@ -315,6 +316,9 @@ const exportToCSV = () => {
                                         Terpakai
                                     </th>
                                     <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
+                                        Kedaluwarsa
+                                    </th>
+                                    <th class="text-right p-3 text-sm font-semibold text-muted-foreground">
                                         Tingkat Penggunaan
                                     </th>
                                 </tr>
@@ -333,6 +337,11 @@ const exportToCSV = () => {
                                     </td>
                                     <td class="p-3 text-sm text-right">
                                         {{ type.used_count }}
+                                    </td>
+                                    <td class="p-3 text-sm text-right">
+                                        <span class="text-red-600 dark:text-red-400 font-medium">
+                                            {{ type.expired_count }}
+                                        </span>
                                     </td>
                                     <td class="p-3 text-sm text-right">
                                         <span

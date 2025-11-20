@@ -46,6 +46,7 @@ class ReportController extends Controller
         $topTypes = Coupon::select('type')
             ->selectRaw('COUNT(*) as created_count')
             ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as used_count', [Coupon::STATUS_USED])
+            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as expired_count', [Coupon::STATUS_EXPIRED])
             ->whereBetween('created_at', [$dateFromCarbon, $dateToCarbon])
             ->groupBy('type')
             ->orderByDesc('created_count')
@@ -60,6 +61,7 @@ class ReportController extends Controller
                     'type' => $type->type,
                     'created_count' => $type->created_count,
                     'used_count' => $type->used_count,
+                    'expired_count' => $type->expired_count,
                     'usage_rate' => $usageRate,
                 ];
             });
