@@ -56,7 +56,6 @@ interface Props {
 const props = defineProps<Props>();
 
 const qrCodeDataUrl = ref('');
-const barcodeDataUrl = ref('');
 const isCopying = ref(false);
 
 const statusColors = {

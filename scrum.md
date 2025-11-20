@@ -183,7 +183,6 @@ Good call - that simplifies things significantly. Let me revise the scrum to foc
     - Social Media (if provided)
   - **QR Code Display:**
     - Large QR code (scannable)
-    - Barcode below QR
   - **Actions:**
     - Copy Link button
     - Print button (optional)
@@ -195,8 +194,7 @@ Good call - that simplifies things significantly. Let me revise the scrum to foc
     - Validated by (staff name)
     - Date & Time
     - Notes (for reversals)
-- [ ] Generate QR code using SimpleSoftwareIO (URL to public page)
-- [ ] Generate barcode of coupon code
+- [x] Generate QR code using `qrcode` npm package (URL to public page)
 - [ ] Implement copy link functionality (clipboard API)
 - [ ] Add print stylesheet (optional)
 
