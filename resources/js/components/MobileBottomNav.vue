@@ -2,8 +2,9 @@
 import { urlIsActive } from '@/lib/utils';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChartColumn, LayoutGrid, ScanLine, Ticket, Users } from 'lucide-vue-next';
+import { ChartColumn, LayoutGrid, ScanLine, Ticket, Users, User } from 'lucide-vue-next';
 import { computed } from 'vue';
+import { edit } from '@/routes/profile';
 
 const page = usePage();
 const isAdmin = computed(() => page.props.auth?.user?.role === 'admin');
@@ -23,26 +24,32 @@ const baseNavItems: NavItem[] = [
 ];
 
 // Nav items that appear after the Scan FAB
-// For admins: Show Users instead of Laporan (more frequently used)
-// Regular users: Show Laporan
+// Regular users: Laporan, Profile
+// Admin users: Laporan, Users
 const rightNavItems = computed<NavItem[]>(() => {
-    if (isAdmin.value) {
-        return [
-            {
-                title: 'Users',
-                href: '/users',
-                icon: Users,
-            },
-        ];
-    }
-
-    return [
+    const items: NavItem[] = [
         {
             title: 'Laporan',
             href: '/reports',
             icon: ChartColumn,
         },
     ];
+
+    if (isAdmin.value) {
+        items.push({
+            title: 'Users',
+            href: '/users',
+            icon: Users,
+        });
+    } else {
+        items.push({
+            title: 'Profile',
+            href: edit(),
+            icon: User,
+        });
+    }
+
+    return items;
 });
 
 const isActive = (href: string) => {
@@ -101,26 +108,25 @@ const isActive = (href: string) => {
             </Link>
         </div>
 
-        <!-- Right side item (Laporan for users, Users for admin) -->
-        <Link
-            :href="rightNavItems[0].href"
-            class="flex flex-1 flex-col items-center justify-center gap-1 px-2 py-2 transition-colors"
-            :class="
-                isActive(rightNavItems[0].href)
-                    ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-            "
-        >
-            <component
-                :is="rightNavItems[0].icon"
-                class="h-5 w-5"
-                :class="isActive(rightNavItems[0].href) ? 'text-primary' : ''"
-            />
-            <span class="text-xs font-medium">{{ rightNavItems[0].title }}</span>
-        </Link>
-
-        <!-- Placeholder for spacing -->
-        <div class="flex flex-1"></div>
+        <!-- Right side items (Laporan + Profile/Users) -->
+        <template v-for="(item, index) in rightNavItems" :key="item.href">
+            <Link
+                :href="item.href"
+                class="flex flex-1 flex-col items-center justify-center gap-1 px-2 py-2 transition-colors"
+                :class="
+                    isActive(item.href)
+                        ? 'text-primary'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
+            >
+                <component
+                    :is="item.icon"
+                    class="h-5 w-5"
+                    :class="isActive(item.href) ? 'text-primary' : ''"
+                />
+                <span class="text-xs font-medium">{{ item.title }}</span>
+            </Link>
+        </template>
     </nav>
 </template>
 
