@@ -132,8 +132,8 @@ onMounted(async () => {
                 <CardHeader class="pb-6 text-center relative z-10">
                     <!-- Status Badge with icon -->
                     <div class="mb-6 flex justify-center">
-                        <Badge :class="statusColors[coupon.status]" class="text-sm px-5 py-2.5 shadow-md border-2 flex items-center gap-2">
-                            <component :is="statusIcons[coupon.status]" class="h-4 w-4" />
+                        <Badge :class="statusColors[coupon.status]" class="text-sm sm:text-base px-5 py-2.5 sm:py-3 shadow-md border-2 flex items-center gap-2">
+                            <component :is="statusIcons[coupon.status]" class="h-4 w-4 sm:h-5 sm:w-5" />
                             {{ statusLabels[coupon.status] }}
                         </Badge>
                     </div>
@@ -163,13 +163,13 @@ onMounted(async () => {
 
                             <div
                                 v-if="qrCodeDataUrl"
-                                class="relative rounded-2xl border-4 border-dashed border-primary/30 p-6 bg-white dark:bg-gray-900 shadow-xl transition-all hover:scale-105 hover:shadow-2xl"
+                                class="relative rounded-2xl border-4 border-dashed border-primary/30 p-4 sm:p-6 bg-white dark:bg-gray-900 shadow-xl transition-all hover:scale-105 hover:shadow-2xl"
                             >
                                 <div class="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full animate-ping"></div>
                                 <img
                                     :src="qrCodeDataUrl"
                                     alt="QR Code"
-                                    class="h-auto w-full max-w-[280px] md:max-w-[320px] relative z-10"
+                                    class="h-auto w-full max-w-[240px] sm:max-w-[280px] md:max-w-[320px] relative z-10"
                                 />
                             </div>
                             <div v-else class="flex h-[320px] w-full max-w-[320px] items-center justify-center rounded-2xl border-2 border-dashed border-muted bg-muted/50">
@@ -185,9 +185,9 @@ onMounted(async () => {
                             <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                 Kode Kupon
                             </p>
-                            <div class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 rounded-xl border-2 border-primary/20">
-                                <QrCode class="h-4 w-4 text-primary" />
-                                <p class="font-mono text-2xl md:text-3xl font-bold tracking-wider text-foreground">
+                            <div class="inline-flex items-center gap-2 px-4 sm:px-6 py-3 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 rounded-xl border-2 border-primary/20">
+                                <QrCode class="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                                <p class="font-mono text-xl sm:text-2xl md:text-3xl font-bold tracking-wider text-foreground break-all">
                                     {{ coupon.code }}
                                 </p>
                             </div>
