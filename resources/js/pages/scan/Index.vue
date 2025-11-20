@@ -20,9 +20,10 @@ import {
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { ScanLine, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Loader2 } from 'lucide-vue-next';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch, onBeforeUnmount } from 'vue';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useSweetAlert } from '@/composables/useSweetAlert';
+import { router } from '@inertiajs/vue3';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -90,12 +91,17 @@ const startScanner = async () => {
             {
                 fps: 10,
                 qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
             },
             (decodedText) => {
                 handleScannedCode(decodedText);
             },
             (errorMessage) => {
                 // Ignore scanning errors, just keep scanning
+            },
+            {
+                // Disable verbose logging
+                verbose: false,
             }
         );
 
@@ -117,12 +123,18 @@ const startScanner = async () => {
 const stopScanner = async () => {
     if (html5QrCode.value) {
         try {
-            await html5QrCode.value.stop();
-            await html5QrCode.value.clear();
+            await html5QrCode.value.stop().catch(() => {
+                // Ignore stop errors (might already be stopped)
+            });
+            await html5QrCode.value.clear().catch(() => {
+                // Ignore clear errors
+            });
         } catch (err) {
-            console.error('Error stopping scanner:', err);
+            // Ignore any errors when stopping
+            console.debug('Scanner cleanup:', err);
+        } finally {
+            html5QrCode.value = null;
         }
-        html5QrCode.value = null;
     }
     isScanning.value = false;
     scanningStatus.value = '';
@@ -314,9 +326,27 @@ onMounted(() => {
     startScanner();
 });
 
+onBeforeUnmount(() => {
+    stopScanner();
+});
+
 onUnmounted(() => {
     stopScanner();
 });
+
+// Stop scanner when navigating away using Inertia events
+if (typeof window !== 'undefined') {
+    const stopOnNavigate = () => {
+        stopScanner();
+    };
+    
+    // Listen to Inertia navigation events
+    document.addEventListener('inertia:start', stopOnNavigate);
+    
+    onUnmounted(() => {
+        document.removeEventListener('inertia:start', stopOnNavigate);
+    });
+}
 </script>
 
 <template>
@@ -339,7 +369,7 @@ onUnmounted(() => {
                     <div class="space-y-4">
                         <div
                             :id="scannerId"
-                            class="w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800 flex items-center justify-center"
+                            class="w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800 flex items-center justify-center pointer-events-auto"
                             style="min-height: 400px; aspect-ratio: 1;"
                         >
                             <div v-if="!isScanning" class="text-center space-y-2 p-8">

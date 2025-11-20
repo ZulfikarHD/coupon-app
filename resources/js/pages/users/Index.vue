@@ -7,6 +7,7 @@ import { useStatusColors } from '@/composables/useStatusColors';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -169,14 +170,14 @@ const openEditModal = (user: User) => {
     <Head title="User Management" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
             <!-- Header -->
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <PageHeader
                     title="User Management"
                     description="Kelola pengguna sistem"
                 />
-                <Button as-child size="lg" class="gap-2 rounded-xl">
+                <Button as-child size="lg" class="h-12 w-full gap-2 rounded-xl active:scale-[0.98] transition-transform sm:w-auto sm:h-11">
                     <Link href="/users/create">
                         <Plus class="h-5 w-5" />
                         Tambah User
@@ -187,24 +188,30 @@ const openEditModal = (user: User) => {
             <!-- Filters -->
             <Card class="border rounded-xl">
                 <CardContent class="pt-6">
-                    <form @submit.prevent="applyFilters" class="flex flex-col gap-4 sm:flex-row">
-                        <div class="flex-1">
+                    <form @submit.prevent="applyFilters" class="space-y-4">
+                        <!-- Search Input -->
+                        <div class="space-y-2">
+                            <Label class="text-sm font-medium">Cari User</Label>
                             <div class="relative">
                                 <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                 <Input
                                     v-model="form.search"
                                     type="text"
                                     placeholder="Cari nama atau email..."
-                                    class="pl-10 rounded-xl"
+                                    class="h-11 pl-10 text-base rounded-xl md:h-10 md:text-sm"
+                                    @input="applyFilters"
                                 />
                             </div>
                         </div>
-                        <div class="w-full sm:w-48">
+                        
+                        <!-- Role Filter -->
+                        <div class="space-y-2">
+                            <Label class="text-sm font-medium">Role</Label>
                             <DropdownMenu>
                                 <DropdownMenuTrigger as-child>
                                     <Button
                                         variant="outline"
-                                        class="w-full justify-between"
+                                        class="w-full h-11 justify-between rounded-xl active:scale-[0.98] transition-transform"
                                         :class="{ 'border-destructive': form.errors.role }"
                                     >
                                         {{ form.role === 'all' ? 'Semua Role' : form.role === 'admin' ? 'Admin' : 'User' }}
@@ -233,15 +240,15 @@ const openEditModal = (user: User) => {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
+                        
+                        <!-- Action Buttons -->
                         <div class="flex gap-2">
-                            <Button type="submit" :disabled="form.processing">
-                                <Search class="h-4 w-4" />
-                            </Button>
                             <Button
                                 type="button"
                                 variant="outline"
                                 @click="resetFilters"
                                 :disabled="form.processing"
+                                class="flex-1 h-11 rounded-xl active:scale-[0.98] transition-transform"
                             >
                                 Reset
                             </Button>
@@ -267,7 +274,113 @@ const openEditModal = (user: User) => {
                         :icon="UserIcon"
                         title="Tidak ada user ditemukan"
                     />
-                    <div v-else class="overflow-x-auto">
+                    <!-- Mobile View: Cards -->
+                    <template v-else>
+                        <div class="block space-y-3 md:hidden">
+                            <Card
+                                v-for="user in props.users.data"
+                                :key="user.id"
+                                class="border rounded-xl p-4 active:scale-[0.98] transition-transform"
+                            >
+                                <div class="space-y-3">
+                                    <!-- User Header -->
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                                            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
+                                                <UserIcon class="h-5 w-5 text-primary" />
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="font-semibold text-foreground truncate">{{ user.name }}</p>
+                                                <p class="text-sm text-muted-foreground truncate">{{ user.email }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- User Details Grid -->
+                                    <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <p class="text-muted-foreground mb-1">Role</p>
+                                            <StatusBadge
+                                                :role="user.role"
+                                                :icon="user.role === 'admin' ? Shield : undefined"
+                                                size="sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <p class="text-muted-foreground mb-1">Status</p>
+                                            <Badge
+                                                v-if="user.email_verified_at"
+                                                variant="outline"
+                                                class="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20 text-xs"
+                                            >
+                                                Verified
+                                            </Badge>
+                                            <Badge
+                                                v-else
+                                                variant="outline"
+                                                class="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20 text-xs"
+                                            >
+                                                Unverified
+                                            </Badge>
+                                        </div>
+                                        <div>
+                                            <p class="text-muted-foreground mb-1">Dibuat</p>
+                                            <p class="font-medium">{{ new Date(user.created_at).toLocaleDateString('id-ID') }}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Actions -->
+                                    <div class="flex items-center gap-2 pt-2 border-t">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            class="flex-1 gap-2 rounded-xl active:scale-[0.98] transition-transform"
+                                            @click="openEditModal(user)"
+                                        >
+                                            <Edit class="h-4 w-4" />
+                                            Edit
+                                        </Button>
+                                        <Dialog>
+                                            <DialogTrigger as-child>
+                                                <Button
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    class="flex-1 gap-2 rounded-xl active:scale-[0.98] transition-transform"
+                                                >
+                                                    <Trash2 class="h-4 w-4" />
+                                                    Hapus
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent class="sm:max-w-md">
+                                                <DialogHeader>
+                                                    <DialogTitle>Hapus User?</DialogTitle>
+                                                    <DialogDescription>
+                                                        Apakah Anda yakin ingin menghapus user
+                                                        <strong>{{ user.name }}</strong>? Tindakan ini tidak dapat dibatalkan.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <DialogFooter class="flex-col gap-2 sm:flex-row">
+                                                    <DialogClose as-child>
+                                                        <Button variant="outline" class="w-full sm:w-auto rounded-xl h-11">
+                                                            Batal
+                                                        </Button>
+                                                    </DialogClose>
+                                                    <Button
+                                                        @click="deleteUser(user.id)"
+                                                        variant="destructive"
+                                                        class="w-full sm:w-auto rounded-xl h-11 active:scale-[0.98] transition-transform"
+                                                    >
+                                                        Hapus
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
+                        <!-- Desktop View: Table -->
+                        <div class="hidden md:block overflow-x-auto">
                         <table class="w-full">
                             <thead>
                                 <tr class="border-b">
@@ -363,7 +476,7 @@ const openEditModal = (user: User) => {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                class="rounded-xl"
+                                                class="rounded-xl active:scale-[0.98] transition-transform"
                                                 @click="openEditModal(user)"
                                             >
                                                 <Edit class="h-4 w-4" />
@@ -373,12 +486,12 @@ const openEditModal = (user: User) => {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        class="text-destructive hover:text-destructive"
+                                                        class="text-destructive hover:text-destructive rounded-xl active:scale-[0.98] transition-transform"
                                                     >
                                                         <Trash2 class="h-4 w-4" />
                                                     </Button>
                                                 </DialogTrigger>
-                                                <DialogContent>
+                                                <DialogContent class="sm:max-w-md">
                                                     <DialogHeader>
                                                         <DialogTitle>
                                                             Hapus User?
@@ -389,13 +502,16 @@ const openEditModal = (user: User) => {
                                                             dibatalkan.
                                                         </DialogDescription>
                                                     </DialogHeader>
-                                                    <DialogFooter>
+                                                    <DialogFooter class="flex-col gap-2 sm:flex-row">
                                                         <DialogClose as-child>
-                                                            <Button variant="outline">Batal</Button>
+                                                            <Button variant="outline" class="w-full sm:w-auto rounded-xl h-11">
+                                                                Batal
+                                                            </Button>
                                                         </DialogClose>
                                                         <Button
                                                             @click="deleteUser(user.id)"
                                                             variant="destructive"
+                                                            class="w-full sm:w-auto rounded-xl h-11 active:scale-[0.98] transition-transform"
                                                         >
                                                             Hapus
                                                         </Button>
@@ -407,49 +523,50 @@ const openEditModal = (user: User) => {
                                 </tr>
                             </tbody>
                         </table>
-                    </div>
+                        </div>
+                    </template>
 
                     <!-- Pagination -->
                     <div
                         v-if="props.users.last_page > 1"
                         class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
                     >
-                        <div class="text-sm text-muted-foreground">
+                        <p class="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
                             Menampilkan {{ (props.users.current_page - 1) * props.users.per_page + 1 }} sampai
                             {{ Math.min(props.users.current_page * props.users.per_page, props.users.total) }} dari
                             {{ props.users.total }} user
-                        </div>
-                        <div class="flex items-center gap-2">
+                        </p>
+                        <div class="flex items-center gap-1 sm:gap-2">
                             <Button
                                 variant="outline"
                                 size="sm"
-                                class="rounded-xl"
+                                class="h-9 w-9 rounded-xl p-0 active:scale-[0.98] transition-transform"
                                 :disabled="props.users.current_page === 1"
                                 @click="router.get(`/users?${buildPaginationQuery(props.users.current_page - 1)}`)"
                             >
                                 <ChevronLeft class="h-4 w-4" />
                             </Button>
                             
-                            <div class="flex gap-1">
+                            <div class="hidden xs:flex gap-1">
                                 <template v-for="page in getPageNumbers()" :key="page">
                                     <Button
                                         v-if="page !== '...'"
                                         variant="outline"
                                         size="sm"
-                                        class="rounded-xl min-w-[2.5rem]"
+                                        class="h-9 min-w-[2.5rem] rounded-xl text-xs active:scale-[0.98] transition-transform"
                                         :class="{ 'bg-primary text-primary-foreground': page === props.users.current_page }"
                                         @click="router.get(`/users?${buildPaginationQuery(page)}`)"
                                     >
                                         {{ page }}
                                     </Button>
-                                    <span v-else class="px-2 py-1 text-sm text-muted-foreground">...</span>
+                                    <span v-else class="px-2 py-1 text-xs text-muted-foreground">...</span>
                                 </template>
                             </div>
                             
                             <Button
                                 variant="outline"
                                 size="sm"
-                                class="rounded-xl"
+                                class="h-9 w-9 rounded-xl p-0 active:scale-[0.98] transition-transform"
                                 :disabled="props.users.current_page === props.users.last_page"
                                 @click="router.get(`/users?${buildPaginationQuery(props.users.current_page + 1)}`)"
                             >
