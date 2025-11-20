@@ -207,4 +207,268 @@ class CouponTest extends TestCase
                 ->has('coupons.data', 20) // First page has 20 items
         );
     }
+
+    public function test_coupon_check_endpoint_returns_coupon_info()
+    {
+        $coupon = Coupon::factory()->create([
+            'code' => 'ABC-1234-XYZ',
+            'status' => Coupon::STATUS_ACTIVE,
+            'expires_at' => now()->addDays(7),
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->get("/api/coupons/{$coupon->code}/check");
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'exists' => true,
+            'can_validate' => true,
+            'coupon' => [
+                'code' => 'ABC-1234-XYZ',
+            ],
+        ]);
+    }
+
+    public function test_coupon_check_endpoint_returns_404_for_invalid_code()
+    {
+        $response = $this->actingAs($this->user)->get('/api/coupons/INVALID-CODE/check');
+
+        $response->assertStatus(404);
+        $response->assertJson([
+            'exists' => false,
+            'message' => 'Kupon tidak ditemukan',
+        ]);
+    }
+
+    public function test_coupon_check_endpoint_returns_cannot_validate_for_used_coupon()
+    {
+        $coupon = Coupon::factory()->create([
+            'status' => Coupon::STATUS_USED,
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->get("/api/coupons/{$coupon->code}/check");
+
+        $response->assertStatus(422);
+        $response->assertJson([
+            'exists' => true,
+            'can_validate' => false,
+            'message' => 'Kupon sudah digunakan',
+        ]);
+    }
+
+    public function test_coupon_check_endpoint_returns_cannot_validate_for_expired_coupon()
+    {
+        $coupon = Coupon::factory()->create([
+            'status' => Coupon::STATUS_ACTIVE,
+            'expires_at' => now()->subDay(),
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->get("/api/coupons/{$coupon->code}/check");
+
+        $response->assertStatus(422);
+        $response->assertJson([
+            'exists' => true,
+            'can_validate' => false,
+            'message' => 'Kupon sudah kedaluwarsa',
+        ]);
+    }
+
+    public function test_coupon_validate_endpoint_requires_password()
+    {
+        $coupon = Coupon::factory()->create([
+            'status' => Coupon::STATUS_ACTIVE,
+            'expires_at' => now()->addDays(7),
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->post("/coupons/{$coupon->code}/validate", []);
+
+        $response->assertSessionHasErrors(['password']);
+    }
+
+    public function test_coupon_validate_endpoint_returns_error_for_wrong_password()
+    {
+        $coupon = Coupon::factory()->create([
+            'status' => Coupon::STATUS_ACTIVE,
+            'expires_at' => now()->addDays(7),
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->post("/coupons/{$coupon->code}/validate", [
+            'password' => 'wrongpassword',
+        ]);
+
+        $response->assertStatus(401);
+        $response->assertJson([
+            'message' => 'Password salah',
+        ]);
+    }
+
+    public function test_coupon_validate_endpoint_successfully_validates_coupon()
+    {
+        $coupon = Coupon::factory()->create([
+            'status' => Coupon::STATUS_ACTIVE,
+            'expires_at' => now()->addDays(7),
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->post("/coupons/{$coupon->code}/validate", [
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'message' => 'Kupon berhasil divalidasi',
+        ]);
+
+        $coupon->refresh();
+        $this->assertEquals(Coupon::STATUS_USED, $coupon->status);
+        
+        $this->assertDatabaseHas('coupon_validations', [
+            'coupon_id' => $coupon->id,
+            'action' => 'used',
+        ]);
+    }
+
+    public function test_coupon_validate_endpoint_returns_error_for_used_coupon()
+    {
+        $coupon = Coupon::factory()->create([
+            'status' => Coupon::STATUS_USED,
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->post("/coupons/{$coupon->code}/validate", [
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJson([
+            'message' => 'Kupon sudah digunakan',
+        ]);
+    }
+
+    public function test_coupon_reverse_endpoint_requires_password_and_reason()
+    {
+        $coupon = Coupon::factory()->create([
+            'status' => Coupon::STATUS_USED,
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->post("/coupons/{$coupon->id}/reverse", []);
+
+        $response->assertSessionHasErrors(['password', 'reason']);
+    }
+
+    public function test_coupon_reverse_endpoint_requires_reason_min_length()
+    {
+        $coupon = Coupon::factory()->create([
+            'status' => Coupon::STATUS_USED,
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->post("/coupons/{$coupon->id}/reverse", [
+            'password' => 'password',
+            'reason' => 'Short',
+        ]);
+
+        $response->assertSessionHasErrors(['reason']);
+    }
+
+    public function test_coupon_reverse_endpoint_returns_error_for_wrong_password()
+    {
+        $coupon = Coupon::factory()->create([
+            'status' => Coupon::STATUS_USED,
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->post("/coupons/{$coupon->id}/reverse", [
+            'password' => 'wrongpassword',
+            'reason' => 'This is a valid reason for reversal',
+        ]);
+
+        $response->assertSessionHas('error');
+        $this->assertStringContainsString('Password salah', session('error'));
+    }
+
+    public function test_coupon_reverse_endpoint_returns_error_for_non_used_coupon()
+    {
+        $coupon = Coupon::factory()->create([
+            'status' => Coupon::STATUS_ACTIVE,
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->post("/coupons/{$coupon->id}/reverse", [
+            'password' => 'password',
+            'reason' => 'This is a valid reason for reversal',
+        ]);
+
+        $response->assertSessionHas('error');
+        $this->assertStringContainsString('Hanya kupon yang sudah digunakan yang dapat dibatalkan', session('error'));
+    }
+
+    public function test_coupon_reverse_endpoint_successfully_reverses_coupon()
+    {
+        $coupon = Coupon::factory()->create([
+            'status' => Coupon::STATUS_USED,
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->post("/coupons/{$coupon->id}/reverse", [
+            'password' => 'password',
+            'reason' => 'This is a valid reason for reversal',
+        ]);
+
+        $response->assertSessionHas('success');
+        $this->assertStringContainsString('Penggunaan kupon berhasil dibatalkan', session('success'));
+
+        $coupon->refresh();
+        $this->assertEquals(Coupon::STATUS_ACTIVE, $coupon->status);
+        
+        $this->assertDatabaseHas('coupon_validations', [
+            'coupon_id' => $coupon->id,
+            'action' => 'reversed',
+            'notes' => 'This is a valid reason for reversal',
+        ]);
+    }
+
+    public function test_guest_cannot_access_check_endpoint()
+    {
+        $coupon = Coupon::factory()->create([
+            'code' => 'ABC-1234-XYZ',
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->get("/api/coupons/{$coupon->code}/check");
+
+        $response->assertRedirect('/login');
+    }
+
+    public function test_guest_cannot_access_validate_endpoint()
+    {
+        $coupon = Coupon::factory()->create([
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->post("/coupons/{$coupon->code}/validate", [
+            'password' => 'password',
+        ]);
+
+        $response->assertRedirect('/login');
+    }
+
+    public function test_guest_cannot_access_reverse_endpoint()
+    {
+        $coupon = Coupon::factory()->create([
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->post("/coupons/{$coupon->id}/reverse", [
+            'password' => 'password',
+            'reason' => 'Test reason',
+        ]);
+
+        $response->assertRedirect('/login');
+    }
 }

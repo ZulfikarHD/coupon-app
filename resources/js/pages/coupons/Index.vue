@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
+import { useStatusColors } from '@/composables/useStatusColors';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Search, Filter, Eye, X, ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { Plus, Search, Filter, Eye, X, ChevronDown, ChevronUp, Ticket, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface Coupon {
@@ -41,6 +45,8 @@ interface Props {
         date_to?: string;
         expires_from?: string;
         expires_to?: string;
+        sort?: string;
+        direction?: string;
     };
 }
 
@@ -64,20 +70,28 @@ const form = useForm({
     date_to: props.filters.date_to || '',
     expires_from: props.filters.expires_from || '',
     expires_to: props.filters.expires_to || '',
+    sort: props.filters.sort || 'created_at',
+    direction: props.filters.direction || 'desc',
 });
 
 const showAdvancedSearch = ref(false);
+const { statusLabels } = useStatusColors();
 
-const statusColors = {
-    active: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
-    used: 'bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20',
-    expired: 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20',
+const currentSort = computed(() => props.filters.sort || 'created_at');
+const currentDirection = computed(() => props.filters.direction || 'desc');
+
+const sort = (column: string) => {
+    const newDirection = currentSort.value === column && currentDirection.value === 'asc' ? 'desc' : 'asc';
+    form.sort = column;
+    form.direction = newDirection;
+    applyFilters();
 };
 
-const statusLabels = {
-    active: 'Aktif',
-    used: 'Terpakai',
-    expired: 'Kedaluwarsa',
+const getSortIcon = (column: string) => {
+    if (currentSort.value !== column) {
+        return ArrowUpDown;
+    }
+    return currentDirection.value === 'asc' ? ArrowUp : ArrowDown;
 };
 
 const statusOptions = [
@@ -215,9 +229,41 @@ const buildQueryString = (page?: number): string => {
     if (form.date_to) searchParams.set('date_to', form.date_to);
     if (form.expires_from) searchParams.set('expires_from', form.expires_from);
     if (form.expires_to) searchParams.set('expires_to', form.expires_to);
+    if (form.sort) searchParams.set('sort', form.sort);
+    if (form.direction) searchParams.set('direction', form.direction);
     if (page) searchParams.set('page', String(page));
     
     return searchParams.toString();
+};
+
+const getPageNumbers = (): (number | string)[] => {
+    const current = props.coupons.current_page;
+    const last = props.coupons.last_page;
+    const pages: (number | string)[] = [];
+    
+    if (last <= 7) {
+        for (let i = 1; i <= last; i++) {
+            pages.push(i);
+        }
+    } else {
+        if (current <= 3) {
+            for (let i = 1; i <= 4; i++) pages.push(i);
+            pages.push('...');
+            pages.push(last);
+        } else if (current >= last - 2) {
+            pages.push(1);
+            pages.push('...');
+            for (let i = last - 3; i <= last; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            pages.push('...');
+            for (let i = current - 1; i <= current + 1; i++) pages.push(i);
+            pages.push('...');
+            pages.push(last);
+        }
+    }
+    
+    return pages;
 };
 
 const breadcrumbs = [
@@ -232,20 +278,17 @@ const breadcrumbs = [
     <Head title="Semua Kupon" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:p-6">
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
             <!-- Header -->
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="space-y-1">
-                    <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">
-                        Semua Kupon
-                    </h1>
-                    <p class="text-sm text-muted-foreground md:text-base">
-                        Kelola dan lihat semua kupon yang telah dibuat
-                    </p>
-                </div>
+                <PageHeader
+                    title="Semua Kupon"
+                    description="Kelola dan lihat semua kupon yang telah dibuat"
+                />
                 <Button
                     as-child
-                    class="h-11 w-full gap-2 sm:w-auto"
+                    size="lg"
+                    class="h-12 w-full gap-2 rounded-xl active:scale-[0.98] transition-transform sm:w-auto sm:h-11"
                 >
                     <Link href="/coupons/create">
                         <Plus class="h-4 w-4" />
@@ -255,11 +298,11 @@ const breadcrumbs = [
             </div>
 
             <!-- Filters Card -->
-            <Card class="border-2">
+            <Card class="border rounded-xl">
                 <CardHeader class="pb-4">
                     <div class="flex items-center gap-2">
                         <Filter class="h-5 w-5 text-primary" />
-                        <CardTitle class="text-lg md:text-xl">Filter & Pencarian</CardTitle>
+                        <CardTitle class="text-lg font-semibold">Filter & Pencarian</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -275,22 +318,23 @@ const breadcrumbs = [
                                         v-model="form.search"
                                         type="text"
                                         placeholder="Kode, nama, telepon, atau jenis..."
-                                        class="h-11 pl-10 text-base md:h-10 md:text-sm"
+                                        class="h-11 pl-10 text-base rounded-xl md:h-10 md:text-sm"
                                         @input="applyFilters"
                                     />
                                 </div>
                             </div>
 
                             <!-- Status Filter (Quick) -->
-                            <div class="space-y-2">
+                            <div class="space-y-2 sm:col-span-2 lg:col-span-1">
                                 <Label class="text-sm font-medium">Status</Label>
-                                <div class="flex flex-wrap gap-2">
+                                <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                                     <label
                                         v-for="option in statusOptions"
                                         :key="option.value"
-                                        class="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-muted"
+                                        class="flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm transition-all active:scale-[0.98]"
                                         :class="{
-                                            'bg-primary text-primary-foreground': Array.isArray(form.status) && form.status.includes(option.value),
+                                            'bg-primary text-primary-foreground border-primary': Array.isArray(form.status) && form.status.includes(option.value),
+                                            'hover:bg-muted': !(Array.isArray(form.status) && form.status.includes(option.value)),
                                         }"
                                     >
                                         <Checkbox
@@ -308,7 +352,7 @@ const breadcrumbs = [
                                 <Input
                                     v-model="form.date_from"
                                     type="date"
-                                    class="h-11 text-base md:h-10 md:text-sm"
+                                    class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                                     @change="applyFilters"
                                 />
                             </div>
@@ -348,7 +392,7 @@ const breadcrumbs = [
                                             v-model="form.customer_name"
                                             type="text"
                                             placeholder="Nama pelanggan..."
-                                            class="h-11 text-base md:h-10 md:text-sm"
+                                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                                             @input="applyFilters"
                                         />
                                     </div>
@@ -445,71 +489,97 @@ const breadcrumbs = [
             </Card>
 
             <!-- Coupons Table -->
-            <Card class="border-2">
+            <Card class="border rounded-xl">
                 <CardContent class="p-0">
                     <!-- Mobile View: Cards -->
-                    <div class="block space-y-4 p-4 md:hidden">
-                        <div
+                    <div class="block space-y-3 p-4 md:hidden">
+                        <Link
                             v-for="coupon in coupons.data"
                             :key="coupon.id"
-                            class="rounded-lg border bg-card p-4 shadow-sm"
+                            :href="`/coupons/${coupon.id}`"
+                            class="block rounded-xl border bg-card p-4 shadow-sm transition-all duration-200 active:bg-muted/50 active:scale-[0.98]"
                         >
-                            <div class="flex items-start justify-between">
-                                <div class="flex-1 space-y-2">
-                                    <div>
-                                        <p class="font-semibold text-foreground">{{ coupon.code }}</p>
-                                        <p class="text-sm text-muted-foreground">{{ coupon.customer_name }}</p>
+                            <div class="space-y-3">
+                                <!-- Code and Status Row -->
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-mono text-lg font-bold text-foreground truncate">{{ coupon.code }}</p>
+                                        <p class="text-sm font-medium text-muted-foreground mt-1">{{ coupon.customer_name }}</p>
                                     </div>
-                                    <div class="flex flex-wrap gap-2">
-                                        <Badge :class="statusColors[coupon.status]">
-                                            {{ statusLabels[coupon.status] }}
-                                        </Badge>
-                                        <span class="text-xs text-muted-foreground">
-                                            {{ coupon.type }}
-                                        </span>
-                                    </div>
-                                    <p class="text-xs text-muted-foreground">
-                                        Dibuat: {{ new Date(coupon.created_at).toLocaleDateString('id-ID') }}
-                                    </p>
+                                    <StatusBadge :status="coupon.status" size="sm" />
                                 </div>
-                                <Button
-                                    as-child
-                                    variant="outline"
-                                    size="sm"
-                                    class="ml-2"
-                                >
-                                    <Link :href="`/coupons/${coupon.id}`">
-                                        <Eye class="h-4 w-4" />
-                                    </Link>
-                                </Button>
+                                
+                                <!-- Type and Date Row -->
+                                <div class="flex items-center justify-between gap-2 flex-wrap">
+                                    <Badge variant="outline" class="text-xs">{{ coupon.type }}</Badge>
+                                    <span class="text-xs text-muted-foreground">
+                                        {{ new Date(coupon.created_at).toLocaleDateString('id-ID') }}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
+                        </Link>
                     </div>
 
                     <!-- Desktop View: Table -->
                     <div class="hidden overflow-x-auto md:block">
                         <table class="w-full">
-                            <thead class="border-b bg-muted/50">
+                            <thead class="border-b bg-muted/30">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                        Kode
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                        <button
+                                            @click="sort('code')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Kode
+                                            <component :is="getSortIcon('code')" class="h-3 w-3" />
+                                        </button>
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                        Pelanggan
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                        <button
+                                            @click="sort('customer_name')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Pelanggan
+                                            <component :is="getSortIcon('customer_name')" class="h-3 w-3" />
+                                        </button>
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                        Telepon
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                        <button
+                                            @click="sort('customer_phone')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Telepon
+                                            <component :is="getSortIcon('customer_phone')" class="h-3 w-3" />
+                                        </button>
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                        Jenis
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                        <button
+                                            @click="sort('type')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Jenis
+                                            <component :is="getSortIcon('type')" class="h-3 w-3" />
+                                        </button>
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                        Status
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                        <button
+                                            @click="sort('status')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Status
+                                            <component :is="getSortIcon('status')" class="h-3 w-3" />
+                                        </button>
                                     </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                                        Dibuat
+                                    <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                        <button
+                                            @click="sort('created_at')"
+                                            class="flex items-center gap-2 hover:text-foreground transition-colors"
+                                        >
+                                            Dibuat
+                                            <component :is="getSortIcon('created_at')" class="h-3 w-3" />
+                                        </button>
                                     </th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                    <th class="px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                         Aksi
                                     </th>
                                 </tr>
@@ -518,13 +588,13 @@ const breadcrumbs = [
                                 <tr
                                     v-for="coupon in coupons.data"
                                     :key="coupon.id"
-                                    class="hover:bg-muted/50 transition-colors"
+                                    class="hover:bg-muted/30 transition-colors duration-150"
                                 >
                                     <td class="whitespace-nowrap px-6 py-4">
-                                        <span class="font-mono font-medium">{{ coupon.code }}</span>
+                                        <span class="font-mono font-semibold text-foreground">{{ coupon.code }}</span>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <span class="font-medium">{{ coupon.customer_name }}</span>
+                                        <span class="font-medium text-foreground">{{ coupon.customer_name }}</span>
                                     </td>
                                     <td class="px-6 py-4">
                                         <span class="text-sm text-muted-foreground">
@@ -532,12 +602,10 @@ const breadcrumbs = [
                                         </span>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <span class="text-sm">{{ coupon.type }}</span>
+                                        <span class="text-sm text-foreground">{{ coupon.type }}</span>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <Badge :class="statusColors[coupon.status]">
-                                            {{ statusLabels[coupon.status] }}
-                                        </Badge>
+                                        <StatusBadge :status="coupon.status" size="sm" />
                                     </td>
                                     <td class="px-6 py-4">
                                         <span class="text-sm text-muted-foreground">
@@ -545,15 +613,16 @@ const breadcrumbs = [
                                         </span>
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 text-right">
-                                <Button
-                                    as-child
-                                    variant="ghost"
-                                    size="sm"
-                                >
-                                    <Link :href="`/coupons/${coupon.id}`">
-                                        <Eye class="h-4 w-4" />
-                                    </Link>
-                                </Button>
+                                        <Button
+                                            as-child
+                                            variant="ghost"
+                                            size="sm"
+                                            class="rounded-xl"
+                                        >
+                                            <Link :href="`/coupons/${coupon.id}`">
+                                                <Eye class="h-4 w-4" />
+                                            </Link>
+                                        </Button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -563,39 +632,61 @@ const breadcrumbs = [
                     <!-- Pagination -->
                     <div v-if="coupons.last_page > 1" class="border-t p-4">
                         <div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
-                            <p class="text-sm text-muted-foreground">
-                                Menampilkan {{ coupons.data.length }} dari {{ coupons.total }} kupon
+                            <p class="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
+                                Menampilkan {{ (coupons.current_page - 1) * coupons.per_page + 1 }} sampai
+                                {{ Math.min(coupons.current_page * coupons.per_page, coupons.total) }} dari
+                                {{ coupons.total }} kupon
                             </p>
-                            <div class="flex gap-2">
+                            <div class="flex items-center gap-1 sm:gap-2">
+                                <!-- Previous Button -->
                                 <Button
                                     variant="outline"
                                     size="sm"
+                                    class="h-9 w-9 rounded-xl p-0 active:scale-[0.98] transition-transform"
                                     :disabled="coupons.current_page === 1"
                                     @click="router.visit(`/coupons?${buildQueryString(coupons.current_page - 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
-                                    Sebelumnya
+                                    <ChevronLeft class="h-4 w-4" />
                                 </Button>
+                                
+                                <!-- Page Numbers - Hide on very small screens -->
+                                <div class="hidden xs:flex gap-1">
+                                    <template v-for="page in getPageNumbers()" :key="page">
+                                        <Button
+                                            v-if="page !== '...'"
+                                            variant="outline"
+                                            size="sm"
+                                            class="h-9 min-w-[2.5rem] rounded-xl text-xs active:scale-[0.98] transition-transform"
+                                            :class="{ 'bg-primary text-primary-foreground': page === coupons.current_page }"
+                                            @click="router.visit(`/coupons?${buildQueryString(page)}`, { preserveState: true, preserveScroll: true })"
+                                        >
+                                            {{ page }}
+                                        </Button>
+                                        <span v-else class="px-2 py-1 text-xs text-muted-foreground">...</span>
+                                    </template>
+                                </div>
+                                
+                                <!-- Next Button -->
                                 <Button
                                     variant="outline"
                                     size="sm"
+                                    class="h-9 w-9 rounded-xl p-0 active:scale-[0.98] transition-transform"
                                     :disabled="coupons.current_page === coupons.last_page"
                                     @click="router.visit(`/coupons?${buildQueryString(coupons.current_page + 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
-                                    Selanjutnya
+                                    <ChevronRight class="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>
                     </div>
 
                     <!-- Empty State -->
-                    <div v-if="coupons.data.length === 0" class="p-12 text-center">
-                        <p class="text-lg font-medium text-muted-foreground">
-                            Tidak ada kupon ditemukan
-                        </p>
-                        <p class="mt-2 text-sm text-muted-foreground">
-                            Coba ubah filter atau buat kupon baru
-                        </p>
-                    </div>
+                    <EmptyState
+                        v-if="coupons.data.length === 0"
+                        :icon="Ticket"
+                        title="Tidak ada kupon ditemukan"
+                        description="Coba ubah filter atau buat kupon baru"
+                    />
                 </CardContent>
             </Card>
         </div>

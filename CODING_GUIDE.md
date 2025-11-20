@@ -29,9 +29,10 @@ coupon-management-system/
 ├── app/
 │   ├── Actions/
 │   │   └── Fortify/          # Laravel Fortify actions
-│   ├── Helpers/               # Helper classes (if needed)
+│   ├── Helpers/               # Helper classes (utility functions)
+│   │   └── PhoneHelper.php
 │   ├── Http/
-│   │   ├── Controllers/       # Route controllers
+│   │   ├── Controllers/       # Route controllers (thin, HTTP-focused)
 │   │   │   ├── Controller.php
 │   │   │   ├── CouponController.php
 │   │   │   ├── DashboardController.php
@@ -40,10 +41,14 @@ coupon-management-system/
 │   │   └── Requests/          # Form request validation
 │   ├── Jobs/                  # Queue jobs
 │   │   └── GenerateCouponCode.php
-│   ├── Models/                # Eloquent models
+│   ├── Models/                # Eloquent models (data layer)
 │   │   ├── Coupon.php
 │   │   ├── CouponValidation.php
 │   │   └── User.php
+│   ├── Services/              # Business logic services
+│   │   ├── CouponService.php
+│   │   ├── DashboardService.php
+│   │   └── ReportService.php
 │   └── Providers/             # Service providers
 │
 ├── bootstrap/                 # Laravel bootstrap files
@@ -765,27 +770,44 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 ### **Controller Pattern**
 
+Controllers should be thin and focused on HTTP concerns:
+- Handle request/response formatting
+- Validate input
+- Delegate business logic to Services
+- Return appropriate responses (Inertia pages, JSON, redirects)
+
 ```php
 <?php
 
 namespace App\Http\Controllers;
 
 use App\Models\Coupon;
+use App\Services\CouponService;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CouponController extends Controller
 {
+    public function __construct(
+        protected CouponService $couponService
+    ) {}
+
     /**
      * Display a listing (Inertia page).
      */
     public function index(Request $request): Response
     {
+        $query = Coupon::with('user')
+            ->orderBy('created_at', 'desc');
+
+        // Delegate filtering logic to service
+        $this->couponService->applyFilters($query, $request);
+
         return Inertia::render('coupons/Index', [
-            'coupons' => Coupon::paginate(20),
+            'coupons' => $query->paginate(20),
+            'filters' => $request->only(['status', 'search']),
         ]);
     }
 
@@ -804,10 +826,13 @@ class CouponController extends Controller
     {
         $validated = $request->validate([
             'type' => ['required', 'string', 'max:255'],
+            'customer_name' => ['required', 'string', 'max:255'],
+            'customer_phone' => ['required', 'string'],
             // ...
         ]);
 
-        $coupon = Coupon::create($validated);
+        // Delegate business logic to service
+        $coupon = $this->couponService->create($validated);
 
         return redirect()
             ->route('coupons.show', $coupon)
@@ -817,21 +842,186 @@ class CouponController extends Controller
     /**
      * API endpoint (JSON response).
      */
-    public function check(string $code): JsonResponse
+    public function check(string $code)
     {
-        $coupon = Coupon::where('code', $code)->first();
+        $result = $this->couponService->check($code);
 
-        if (!$coupon) {
-            return response()->json([
-                'exists' => false,
-                'message' => 'Coupon not found',
-            ], 404);
+        return response()->json(
+            \Illuminate\Support\Arr::except($result, 'status_code'),
+            $result['status_code']
+        );
+    }
+}
+```
+
+### **Service Pattern**
+
+Services contain business logic and complex operations that don't belong in controllers or models.
+
+**When to create a Service:**
+- Complex business logic (validation, calculations, transformations)
+- Operations involving multiple models
+- Reusable logic across multiple controllers
+- Complex query building/filtering
+- External API integrations
+- Heavy data processing
+
+**Service Structure:**
+
+```php
+<?php
+
+namespace App\Services;
+
+use App\Models\Coupon;
+use App\Models\CouponValidation;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
+
+class CouponService
+{
+    /**
+     * Apply filters to coupon query
+     */
+    public function applyFilters(Builder $query, Request $request): Builder
+    {
+        // Complex filtering logic here
+        if ($request->filled('status')) {
+            $query->whereIn('status', $this->parseStatusFilter($request));
         }
 
-        return response()->json([
-            'exists' => true,
-            'coupon' => $coupon,
-        ], 200);
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('code', 'like', "%{$request->search}%")
+                    ->orWhere('customer_name', 'like', "%{$request->search}%");
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * Create a new coupon with business logic
+     */
+    public function create(array $data): Coupon
+    {
+        // Normalize data
+        $data['customer_phone'] = PhoneHelper::normalize($data['customer_phone']);
+        $data['status'] = Coupon::STATUS_ACTIVE;
+        $data['created_by'] = auth()->id();
+
+        // Use Job for code generation
+        GenerateCouponCode::dispatchSync($data);
+
+        // Retrieve created coupon
+        return Coupon::where('created_by', auth()->id())
+            ->latest('id')
+            ->firstOrFail();
+    }
+
+    /**
+     * Validate a coupon (business logic)
+     */
+    public function validate(string $code, string $password): array
+    {
+        // Verify password
+        if (!Hash::check($password, auth()->user()->password)) {
+            return [
+                'success' => false,
+                'message' => 'Password salah',
+                'status_code' => 401,
+            ];
+        }
+
+        $coupon = Coupon::where('code', $code)->firstOrFail();
+
+        // Business validation rules
+        if (!$coupon->canBeValidated()) {
+            return [
+                'success' => false,
+                'message' => $this->getValidationErrorMessage($coupon),
+                'status_code' => 422,
+            ];
+        }
+
+        // Update status and create validation record
+        $coupon->status = Coupon::STATUS_USED;
+        $coupon->save();
+
+        CouponValidation::create([
+            'coupon_id' => $coupon->id,
+            'validated_by' => auth()->id(),
+            'validated_at' => now(),
+            'action' => 'used',
+        ]);
+
+        return [
+            'success' => true,
+            'message' => 'Kupon berhasil divalidasi',
+            'status_code' => 200,
+        ];
+    }
+
+    /**
+     * Private helper methods
+     */
+    protected function parseStatusFilter(Request $request): array
+    {
+        // Complex parsing logic
+        return [];
+    }
+
+    protected function getValidationErrorMessage(Coupon $coupon): string
+    {
+        // Error message logic
+        return 'Kupon tidak dapat divalidasi';
+    }
+}
+```
+
+**Service Best Practices:**
+
+1. **Single Responsibility**: Each service should handle one domain (CouponService, ReportService, DashboardService)
+2. **Dependency Injection**: Inject services into controllers via constructor
+3. **Return Structured Data**: Return arrays or DTOs, not HTTP responses
+4. **Testable**: Services should be easily unit testable without HTTP layer
+5. **Reusable**: Services can be used by controllers, jobs, commands, etc.
+6. **Helper Classes**: Use helper classes for utility functions (PhoneHelper, etc.)
+
+**Helper Classes:**
+
+For simple, stateless utility functions:
+
+```php
+<?php
+
+namespace App\Helpers;
+
+class PhoneHelper
+{
+    /**
+     * Normalize phone number to international format
+     */
+    public static function normalize(string $phone): string
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        
+        if (substr($phone, 0, 1) === '0') {
+            $phone = '62' . substr($phone, 1);
+        } elseif (substr($phone, 0, 2) !== '62') {
+            $phone = '62' . $phone;
+        }
+        
+        return $phone;
+    }
+
+    /**
+     * Format phone for display
+     */
+    public static function formatForDisplay(string $phone): string
+    {
+        // Formatting logic
+        return $phone;
     }
 }
 ```
@@ -1238,6 +1428,9 @@ Closes #123
 - ✅ Add comments for complex logic
 - ✅ Use TypeScript for type safety
 - ✅ Follow DRY principle (Don't Repeat Yourself)
+- ✅ Extract business logic to Services
+- ✅ Keep controllers thin (HTTP concerns only)
+- ✅ Use Helper classes for reusable utility functions
 
 ### **User Experience**
 - ✅ Provide loading states for async operations
@@ -1248,6 +1441,157 @@ Closes #123
 
 ---
 
-**Last Updated:** November 20, 2025  
+---
+
+## 👥 User Management & Profile Settings
+
+### **Admin User Management**
+
+Admin users can manage all users in the system through the User Management feature.
+
+#### **Routes**
+
+```php
+// Protected by admin middleware
+Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])->group(function () {
+    Route::resource('users', UserController::class);
+});
+```
+
+#### **Middleware**
+
+Create `EnsureUserIsAdmin` middleware to protect admin routes:
+
+```php
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+class EnsureUserIsAdmin
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            abort(403, 'Unauthorized access. Admin privileges required.');
+        }
+
+        return $next($request);
+    }
+}
+```
+
+#### **User Model Methods**
+
+```php
+// Add to User model
+public function isAdmin(): bool
+{
+    return $this->role === 'admin';
+}
+```
+
+#### **UserService Pattern**
+
+```php
+<?php
+
+namespace App\Services;
+
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+
+class UserService
+{
+    public function create(array $data): User
+    {
+        $data['password'] = Hash::make($data['password']);
+        $data['role'] = $data['role'] ?? 'user';
+        return User::create($data);
+    }
+
+    public function update(User $user, array $data): User
+    {
+        if (isset($data['password']) && !empty($data['password'])) {
+            $data['password'] = Hash::make($data['password']);
+        } else {
+            unset($data['password']);
+        }
+
+        $user->fill($data);
+        $user->save();
+        return $user->fresh();
+    }
+
+    public function delete(User $user): bool
+    {
+        // Prevent deleting yourself
+        if ($user->id === auth()->id()) {
+            throw new \Exception('You cannot delete your own account.');
+        }
+        return $user->delete();
+    }
+}
+```
+
+#### **Conditional Navigation**
+
+Show admin menu items conditionally in sidebar:
+
+```vue
+<script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const page = usePage();
+const isAdmin = computed(() => page.props.auth?.user?.role === 'admin');
+
+const mainNavItems = computed(() => {
+    const items = [
+        // Regular menu items
+    ];
+
+    if (isAdmin.value) {
+        items.push({
+            title: 'User Management',
+            href: '/users',
+            icon: Users,
+        });
+    }
+
+    return items;
+});
+</script>
+```
+
+### **User Profile Settings**
+
+Users can update their own profile information through the Settings pages.
+
+#### **Profile Update**
+
+- Located at `/settings/profile`
+- Users can update name and email
+- Email verification reset if email changes
+- Uses `ProfileUpdateRequest` for validation
+
+#### **Password Update**
+
+- Located at `/settings/password`
+- Requires current password confirmation
+- Rate limited (6 attempts per minute)
+
+#### **Profile Deletion**
+
+- Users can delete their own account
+- Requires password confirmation
+- Automatically logs out after deletion
+
+---
+
+**Last Updated:** December 2025  
 **Maintainer:** Development Team  
-**Version:** 1.0
+**Version:** 1.1

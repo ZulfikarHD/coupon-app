@@ -20,7 +20,7 @@ import {
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { ScanLine, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Loader2 } from 'lucide-vue-next';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch, onBeforeUnmount, nextTick } from 'vue';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useSweetAlert } from '@/composables/useSweetAlert';
 
@@ -46,12 +46,14 @@ interface CouponData {
 
 const swal = useSweetAlert();
 const scannerId = 'qr-reader';
+const scannerElement = ref<HTMLElement | null>(null);
 const html5QrCode = ref<Html5Qrcode | null>(null);
 const isScanning = ref(false);
 const scanningStatus = ref<string>('');
 const showManualInput = ref(false);
 const manualCode = ref('');
 const isSubmittingManual = ref(false);
+const isNavigating = ref(false);
 
 // Modal state
 const showValidationModal = ref(false);
@@ -76,8 +78,19 @@ watch(errorMessage, (message) => {
 
 const startScanner = async () => {
     try {
-        if (html5QrCode.value) {
-            return; // Already started
+        // Don't start if already scanning, navigating, or element doesn't exist
+        if (html5QrCode.value || isNavigating.value) {
+            return; // Already started or navigating away
+        }
+
+        // Wait for DOM to be ready
+        await nextTick();
+        
+        // Ensure the scanner element exists
+        const element = scannerElement.value || document.getElementById(scannerId);
+        if (!element) {
+            console.warn('Scanner element not found');
+            return;
         }
 
         scanningStatus.value = 'Meminta izin kamera...';
@@ -90,12 +103,19 @@ const startScanner = async () => {
             {
                 fps: 10,
                 qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
             },
             (decodedText) => {
-                handleScannedCode(decodedText);
+                if (!isNavigating.value) {
+                    handleScannedCode(decodedText);
+                }
             },
             (errorMessage) => {
                 // Ignore scanning errors, just keep scanning
+            },
+            {
+                // Disable verbose logging
+                verbose: false,
             }
         );
 
@@ -111,21 +131,47 @@ const startScanner = async () => {
         } else {
             scanningStatus.value = 'Gagal mengakses kamera. Silakan gunakan input manual.';
         }
+        
+        // Clean up on error
+        if (html5QrCode.value) {
+            html5QrCode.value = null;
+        }
     }
 };
 
-const stopScanner = async () => {
+const stopScanner = async (isNavigation = false) => {
     if (html5QrCode.value) {
         try {
-            await html5QrCode.value.stop();
-            await html5QrCode.value.clear();
+            // Mark as navigating only if this is a navigation stop
+            if (isNavigation) {
+                isNavigating.value = true;
+            }
+            
+            // Stop the scanner
+            await html5QrCode.value.stop().catch(() => {
+                // Ignore stop errors (might already be stopped)
+            });
+            
+            // Clear the scanner - this removes DOM elements
+            await html5QrCode.value.clear().catch(() => {
+                // Ignore clear errors
+            });
+            
+            // Wait a bit for DOM cleanup to complete
+            await new Promise(resolve => setTimeout(resolve, 50));
         } catch (err) {
-            console.error('Error stopping scanner:', err);
+            // Ignore any errors when stopping
+            console.debug('Scanner cleanup:', err);
+        } finally {
+            // Clear the reference
+            html5QrCode.value = null;
+            isScanning.value = false;
+            scanningStatus.value = '';
         }
-        html5QrCode.value = null;
+    } else {
+        isScanning.value = false;
+        scanningStatus.value = '';
     }
-    isScanning.value = false;
-    scanningStatus.value = '';
 };
 
 const extractCodeFromUrl = (url: string): string => {
@@ -183,8 +229,18 @@ const checkCoupon = async (code: string): Promise<{ success: boolean; data?: any
 };
 
 const handleScannedCode = async (decodedText: string) => {
+    // Don't process if navigating
+    if (isNavigating.value) {
+        return;
+    }
+    
     // Stop scanner temporarily
     await stopScanner();
+    
+    // Check again after stopping (in case navigation started)
+    if (isNavigating.value) {
+        return;
+    }
     
     const code = extractCodeFromUrl(decodedText);
     scanningStatus.value = `Kode terdeteksi: ${code}. Memeriksa...`;
@@ -200,9 +256,11 @@ const handleScannedCode = async (decodedText: string) => {
         errorMessage.value = result.error || 'Kupon tidak dapat divalidasi';
         scanningStatus.value = result.error || 'Kupon tidak dapat divalidasi';
         
-        // Restart scanner after 3 seconds
+        // Restart scanner after 3 seconds (only if not navigating)
         setTimeout(() => {
-            startScanner();
+            if (!isNavigating.value) {
+                startScanner();
+            }
         }, 3000);
     }
 };
@@ -278,9 +336,11 @@ const handleValidate = async () => {
                 successMessage.value = '';
             }, 5000);
             
-            // Restart scanner after 3 seconds
+            // Restart scanner after 3 seconds (only if not navigating)
             setTimeout(() => {
-                startScanner();
+                if (!isNavigating.value) {
+                    startScanner();
+                }
             }, 3000);
         } else {
             if (response.status === 401) {
@@ -304,33 +364,63 @@ const handleModalClose = () => {
     errorMessage.value = '';
     couponData.value = null;
     
-    // Restart scanner
-    if (!isScanning.value) {
+    // Restart scanner (only if not navigating)
+    if (!isScanning.value && !isNavigating.value) {
         startScanner();
     }
 };
 
-onMounted(() => {
-    startScanner();
+onMounted(async () => {
+    // Wait for Vue to finish rendering before starting scanner
+    await nextTick();
+    // Add a small delay to ensure DOM is fully ready
+    setTimeout(() => {
+        if (!isNavigating.value) {
+            startScanner();
+        }
+    }, 100);
+});
+
+onBeforeUnmount(() => {
+    // Stop scanner before component unmounts (this is navigation)
+    stopScanner(true);
 });
 
 onUnmounted(() => {
-    stopScanner();
+    // Ensure scanner is stopped (this is navigation)
+    stopScanner(true);
 });
+
+// Stop scanner when navigating away using Inertia events
+if (typeof window !== 'undefined') {
+    const stopOnNavigate = () => {
+        isNavigating.value = true;
+        stopScanner(true); // Pass true to indicate this is a navigation stop
+    };
+    
+    // Listen to Inertia navigation events
+    document.addEventListener('inertia:start', stopOnNavigate);
+    
+    onUnmounted(() => {
+        document.removeEventListener('inertia:start', stopOnNavigate);
+        // Ensure scanner is stopped on unmount
+        stopScanner(true);
+    });
+}
 </script>
 
 <template>
     <Head title="Scan Kupon" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:p-6">
-            <Card class="border-2">
-                <CardHeader>
+        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
+            <Card class="border rounded-xl">
+                <CardHeader class="pb-4">
                     <div class="flex items-center gap-2">
-                        <ScanLine class="h-6 w-6 text-primary" />
-                        <CardTitle>Scan Kupon</CardTitle>
+                        <ScanLine class="h-5 w-5 text-primary" />
+                        <CardTitle class="text-base sm:text-lg font-semibold">Scan Kupon</CardTitle>
                     </div>
-                    <CardDescription>
+                    <CardDescription class="text-sm mt-1">
                         Arahkan kamera ke QR Code kupon untuk memvalidasi
                     </CardDescription>
                 </CardHeader>
@@ -338,16 +428,22 @@ onUnmounted(() => {
                     <!-- Scanner View -->
                     <div class="space-y-4">
                         <div
+                            ref="scannerElement"
                             :id="scannerId"
-                            class="w-full rounded-lg border-2 border-dashed bg-gray-100 dark:bg-gray-800"
-                            style="min-height: 300px;"
-                        ></div>
+                            class="w-full rounded-xl border-2 border-dashed bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden relative"
+                            style="min-height: 400px; aspect-ratio: 1;"
+                        >
+                            <div v-if="!isScanning" class="text-center space-y-2 p-8">
+                                <ScanLine class="h-12 w-12 mx-auto text-muted-foreground" />
+                                <p class="text-sm text-muted-foreground">Tekan tombol untuk memulai scan</p>
+                            </div>
+                        </div>
                         
-                        <div v-if="scanningStatus" class="flex items-center gap-2 rounded-lg border p-3">
-                            <Loader2 v-if="isScanning && !scanningStatus.includes('terdeteksi')" class="h-4 w-4 animate-spin text-primary" />
-                            <AlertCircle v-else-if="errorMessage || scanningStatus.includes('tidak')" class="h-4 w-4 text-destructive" />
-                            <CheckCircle2 v-else class="h-4 w-4 text-green-600" />
-                            <p class="text-sm" :class="errorMessage || scanningStatus.includes('tidak') ? 'text-destructive' : ''">
+                        <div v-if="scanningStatus" class="flex items-center gap-2 rounded-xl border p-4 bg-card">
+                            <Loader2 v-if="isScanning && !scanningStatus.includes('terdeteksi')" class="h-5 w-5 animate-spin text-primary flex-shrink-0" />
+                            <AlertCircle v-else-if="errorMessage || scanningStatus.includes('tidak')" class="h-5 w-5 text-destructive flex-shrink-0" />
+                            <CheckCircle2 v-else class="h-5 w-5 text-green-600 flex-shrink-0" />
+                            <p class="text-sm flex-1" :class="errorMessage || scanningStatus.includes('tidak') ? 'text-destructive' : ''">
                                 {{ scanningStatus }}
                             </p>
                         </div>
@@ -355,43 +451,47 @@ onUnmounted(() => {
                         <!-- Manual Input Section -->
                         <Collapsible v-model="showManualInput">
                             <CollapsibleTrigger as-child>
-                                <Button variant="outline" class="w-full justify-between">
+                                <Button variant="outline" class="w-full justify-between rounded-xl active:scale-[0.98] transition-transform">
                                     <span>Atau masukkan kode manual</span>
                                     <ChevronDown v-if="!showManualInput" class="h-4 w-4" />
                                     <ChevronUp v-else class="h-4 w-4" />
                                 </Button>
                             </CollapsibleTrigger>
                             <CollapsibleContent class="mt-4 space-y-4">
-                                <div class="space-y-2">
-                                    <Label for="manual-code">Kode Kupon</Label>
-                                    <div class="flex gap-2">
+                                <div class="space-y-3">
+                                    <Label for="manual-code" class="text-sm font-medium">Kode Kupon</Label>
+                                    <div class="flex flex-col gap-2 sm:flex-row">
                                         <Input
                                             id="manual-code"
                                             v-model="manualCode"
                                             placeholder="Masukkan kode kupon atau URL"
-                                            class="flex-1"
+                                            class="flex-1 h-11 text-base rounded-xl sm:h-10 sm:text-sm"
                                             @keyup.enter="handleManualSubmit"
                                         />
                                         <Button
                                             @click="handleManualSubmit"
                                             :disabled="isSubmittingManual"
+                                            class="h-11 w-full sm:w-auto rounded-xl active:scale-[0.98] transition-transform"
                                         >
                                             <Loader2 v-if="isSubmittingManual" class="mr-2 h-4 w-4 animate-spin" />
-                                            Cek
+                                            Cek Kode
                                         </Button>
                                     </div>
+                                    <p class="text-xs text-muted-foreground">
+                                        Anda dapat memasukkan kode kupon atau URL lengkap
+                                    </p>
                                 </div>
                             </CollapsibleContent>
                         </Collapsible>
 
                         <!-- Error Message -->
-                        <div v-if="errorMessage" class="flex items-center gap-2 rounded-lg border border-destructive bg-destructive/10 p-3">
+                        <div v-if="errorMessage" class="flex items-center gap-2 rounded-xl border border-destructive bg-destructive/10 p-3">
                             <AlertCircle class="h-4 w-4 text-destructive" />
                             <p class="text-sm text-destructive">{{ errorMessage }}</p>
                         </div>
 
                         <!-- Success Message -->
-                        <div v-if="successMessage" class="flex items-center gap-2 rounded-lg border border-green-500 bg-green-500/10 p-3">
+                        <div v-if="successMessage" class="flex items-center gap-2 rounded-xl border border-green-500 bg-green-500/10 p-3">
                             <CheckCircle2 class="h-4 w-4 text-green-600" />
                             <p class="text-sm text-green-600">{{ successMessage }}</p>
                         </div>
@@ -402,66 +502,65 @@ onUnmounted(() => {
 
         <!-- Validation Confirmation Modal -->
         <Dialog :open="showValidationModal" @update:open="handleModalClose">
-            <DialogContent class="sm:max-w-md">
+            <DialogContent class="sm:max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Konfirmasi Penggunaan Kupon</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle class="text-lg sm:text-xl">Konfirmasi Penggunaan Kupon</DialogTitle>
+                    <DialogDescription class="text-sm">
                         Masukkan password Anda untuk mengkonfirmasi penggunaan kupon ini
                     </DialogDescription>
                 </DialogHeader>
 
                 <div v-if="couponData" class="space-y-4 py-4">
                     <!-- Coupon Info -->
-                    <div class="space-y-3 rounded-lg border bg-muted/50 p-4">
+                    <div class="space-y-3 rounded-xl border bg-muted/50 p-4">
                         <div>
                             <p class="text-xs font-medium text-muted-foreground">Kode Kupon</p>
-                            <p class="mt-1 font-mono font-semibold">{{ couponData.code }}</p>
+                            <p class="mt-1 font-mono font-semibold text-base break-all">{{ couponData.code }}</p>
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted-foreground">Jenis</p>
-                            <p class="mt-1">{{ couponData.type }}</p>
-                        </div>
-                        <div>
-                            <p class="text-xs font-medium text-muted-foreground">Deskripsi</p>
-                            <p class="mt-1 text-sm">{{ couponData.description }}</p>
+                            <p class="mt-1 text-sm">{{ couponData.type }}</p>
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted-foreground">Pelanggan</p>
-                            <p class="mt-1">{{ couponData.customer_name }}</p>
+                            <p class="mt-1 text-sm">{{ couponData.customer_name }}</p>
                         </div>
                     </div>
 
                     <!-- Password Input -->
                     <div class="space-y-2">
-                        <Label for="password">Password</Label>
+                        <Label for="password" class="text-sm font-medium">Password</Label>
                         <Input
                             id="password"
                             v-model="password"
                             type="password"
                             placeholder="Masukkan password Anda"
                             :disabled="isSubmitting"
+                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
                             @keyup.enter="handleValidate"
                         />
                     </div>
 
                     <!-- Error Message -->
-                    <div v-if="errorMessage" class="flex items-center gap-2 rounded-lg border border-destructive bg-destructive/10 p-3">
+                    <div v-if="errorMessage" class="flex items-center gap-2 rounded-xl border border-destructive bg-destructive/10 p-3">
                         <AlertCircle class="h-4 w-4 text-destructive" />
                         <p class="text-sm text-destructive">{{ errorMessage }}</p>
                     </div>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter class="flex-col gap-2 sm:flex-row">
                     <Button
                         variant="outline"
                         @click="handleModalClose"
                         :disabled="isSubmitting"
+                        class="w-full sm:w-auto rounded-xl h-11 active:scale-[0.98] transition-transform"
                     >
                         Batal
                     </Button>
                     <Button
                         @click="handleValidate"
                         :disabled="isSubmitting || !password.trim()"
+                        class="w-full sm:w-auto rounded-xl h-11 active:scale-[0.98] transition-transform"
                     >
                         <Loader2 v-if="isSubmitting" class="mr-2 h-4 w-4 animate-spin" />
                         Konfirmasi Penggunaan
@@ -471,3 +570,51 @@ onUnmounted(() => {
         </Dialog>
     </AppLayout>
 </template>
+
+<style scoped>
+/* Ensure scanner elements are contained and don't block navigation */
+#qr-reader {
+    position: relative;
+    isolation: isolate;
+    contain: layout style paint;
+    overflow: hidden;
+}
+
+/* Contain scanner video and canvas within the container */
+#qr-reader video,
+#qr-reader canvas {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    pointer-events: auto;
+}
+
+/* Prevent any Html5Qrcode overlays from blocking navigation */
+:deep(#qr-reader__dashboard),
+:deep(#qr-reader__camera_selection),
+:deep(#qr-reader__file_selection) {
+    position: absolute !important;
+    z-index: 1 !important;
+    pointer-events: auto;
+}
+
+/* Ensure navigation elements stay on top and are clickable */
+:deep(nav) {
+    position: relative !important;
+    z-index: 1000 !important;
+    pointer-events: auto !important;
+}
+
+/* Ensure links in navigation are clickable */
+:deep(nav a),
+:deep(nav button),
+:deep([role="navigation"] a),
+:deep([role="navigation"] button) {
+    position: relative !important;
+    z-index: 1001 !important;
+    pointer-events: auto !important;
+}
+</style>

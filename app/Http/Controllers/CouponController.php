@@ -2,110 +2,43 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\GenerateCouponCode;
 use App\Models\Coupon;
-use App\Models\CouponValidation;
+use App\Services\CouponService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Arr;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CouponController extends Controller
 {
+    public function __construct(
+        protected CouponService $couponService
+    ) {}
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request): Response
     {
-        $query = Coupon::with('user')
-            ->orderBy('created_at', 'desc');
+        $query = Coupon::with('user');
 
-        // Status filter (can be array for multi-select)
-        // Frontend sends multiple status=active&status=used parameters
-        // Manually parse query string to get all status values (parse_str overwrites duplicates)
-        $statusArray = [];
-        $queryString = $request->getQueryString();
+        // Apply filters using service
+        $this->couponService->applyFilters($query, $request);
+
+        // Apply sorting
+        $sortColumn = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
         
-        if ($queryString) {
-            // Manually extract all status=value pairs from query string
-            // Handle both status=value&other=param and status=value (at end)
-            preg_match_all('/[?&]status=([^&]*)/', '?' . $queryString, $matches);
-            if (!empty($matches[1])) {
-                $statusArray = array_map(function($value) {
-                    return urldecode(trim($value));
-                }, $matches[1]);
-            }
+        // Validate sort column to prevent SQL injection
+        $allowedColumns = ['code', 'customer_name', 'customer_phone', 'type', 'status', 'created_at', 'expires_at'];
+        if (!in_array($sortColumn, $allowedColumns)) {
+            $sortColumn = 'created_at';
         }
         
-        // Fallback: check request input (might work if Laravel parsed it as array)
-        if (empty($statusArray)) {
-            $statusInput = $request->input('status');
-            if ($statusInput) {
-                $statusArray = is_array($statusInput) ? $statusInput : [$statusInput];
-            }
-        }
+        // Validate sort direction
+        $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
         
-        if (!empty($statusArray)) {
-            // Filter out 'all' and empty values, and trim whitespace
-            $statusArray = array_filter(array_map('trim', $statusArray), function($s) {
-                return $s !== 'all' && !empty($s);
-            });
-            
-            if (count($statusArray) > 0) {
-                $query->whereIn('status', array_values($statusArray));
-            }
-        }
-
-        // Basic search filter (code, name, phone, type)
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('code', 'like', "%{$search}%")
-                    ->orWhere('customer_name', 'like', "%{$search}%")
-                    ->orWhere('customer_phone', 'like', "%{$search}%")
-                    ->orWhere('type', 'like', "%{$search}%");
-            });
-        }
-
-        // Advanced filters
-        // Customer name filter
-        if ($request->filled('customer_name')) {
-            $query->where('customer_name', 'like', "%{$request->customer_name}%");
-        }
-
-        // Customer phone filter
-        if ($request->filled('customer_phone')) {
-            // Normalize phone for search
-            $phone = preg_replace('/[^0-9]/', '', $request->customer_phone);
-            if (substr($phone, 0, 1) === '0') {
-                $phone = '62' . substr($phone, 1);
-            } elseif (substr($phone, 0, 2) !== '62') {
-                $phone = '62' . $phone;
-            }
-            $query->where('customer_phone', 'like', "%{$phone}%");
-        }
-
-        // Coupon type filter
-        if ($request->filled('coupon_type')) {
-            $query->where('type', 'like', "%{$request->coupon_type}%");
-        }
-
-        // Created date range filter
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        // Expires date range filter
-        if ($request->filled('expires_from')) {
-            $query->whereDate('expires_at', '>=', $request->expires_from);
-        }
-        if ($request->filled('expires_to')) {
-            $query->whereDate('expires_at', '<=', $request->expires_to);
-        }
+        $query->orderBy($sortColumn, $sortDirection);
 
         $coupons = $query->paginate(20)->withQueryString();
 
@@ -127,6 +60,8 @@ class CouponController extends Controller
                 'date_to',
                 'expires_from',
                 'expires_to',
+                'sort',
+                'direction',
             ]),
         ]);
     }
@@ -154,43 +89,7 @@ class CouponController extends Controller
             'expires_at' => ['nullable', 'date', 'after_or_equal:today'],
         ]);
 
-        // Normalize phone number before creating coupon (same as model mutator)
-        $phone = preg_replace('/[^0-9]/', '', $validated['customer_phone']);
-        if (substr($phone, 0, 1) === '0') {
-            $phone = '62' . substr($phone, 1);
-        } elseif (substr($phone, 0, 2) !== '62') {
-            $phone = '62' . $phone;
-        }
-
-        // Use Job to create coupon synchronously (dispatchSync for immediate execution)
-        GenerateCouponCode::dispatchSync([
-            'type' => $validated['type'],
-            'description' => $validated['description'],
-            'customer_name' => $validated['customer_name'],
-            'customer_phone' => $phone, // Use normalized phone
-            'customer_email' => $validated['customer_email'] ?? null,
-            'customer_social_media' => $validated['customer_social_media'] ?? null,
-            'expires_at' => $validated['expires_at'] ?? null,
-            'status' => Coupon::STATUS_ACTIVE,
-            'created_by' => Auth::id(),
-        ]);
-
-        // Get the created coupon - use multiple fallback strategies
-        // First try to match by all fields, then fallback to latest by this user
-        $coupon = Coupon::where('created_by', Auth::id())
-            ->where('customer_name', $validated['customer_name'])
-            ->where('customer_phone', $phone) // Use normalized phone
-            ->where('type', $validated['type'])
-            ->latest('id')
-            ->first();
-
-        // Fallback: if not found, get the latest coupon created by this user
-        // (in case there's a timing issue or normalization difference)
-        if (!$coupon) {
-            $coupon = Coupon::where('created_by', Auth::id())
-                ->latest('id')
-                ->firstOrFail();
-        }
+        $coupon = $this->couponService->create($validated);
 
         return redirect()
             ->route('coupons.show', $coupon->id)
@@ -237,46 +136,12 @@ class CouponController extends Controller
      */
     public function check(string $code)
     {
-        // Extract code from URL if full URL is provided
-        $code = $this->extractCodeFromUrl($code);
+        $result = $this->couponService->check($code);
 
-        $coupon = Coupon::where('code', $code)->first();
-
-        if (!$coupon) {
-            return response()->json([
-                'exists' => false,
-                'message' => 'Kupon tidak ditemukan',
-            ], 404);
-        }
-
-        $canValidate = $coupon->canBeValidated();
-        $message = '';
-
-        if (!$canValidate) {
-            if ($coupon->status === Coupon::STATUS_USED) {
-                $message = 'Kupon sudah digunakan';
-            } elseif ($coupon->status === Coupon::STATUS_EXPIRED) {
-                $message = 'Kupon sudah kedaluwarsa';
-            } elseif ($coupon->expires_at && $coupon->expires_at->isPast()) {
-                $message = 'Kupon sudah kedaluwarsa';
-            } else {
-                $message = 'Kupon tidak dapat divalidasi';
-            }
-        }
-
-        return response()->json([
-            'exists' => true,
-            'can_validate' => $canValidate,
-            'message' => $message,
-            'coupon' => [
-                'code' => $coupon->code,
-                'type' => $coupon->type,
-                'description' => $coupon->description,
-                'customer_name' => $coupon->customer_name,
-                'status' => $coupon->status,
-                'expires_at' => $coupon->expires_at?->toIso8601String(),
-            ],
-        ], $canValidate ? 200 : 422);
+        return response()->json(
+            Arr::except($result, 'status_code'),
+            $result['status_code']
+        );
     }
 
     /**
@@ -288,54 +153,51 @@ class CouponController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        // Extract code from URL if full URL is provided
-        $code = $this->extractCodeFromUrl($code);
+        $result = $this->couponService->validate($code, $request->password);
 
-        // Verify password
-        if (!Hash::check($request->password, Auth::user()->password)) {
-            return response()->json([
-                'message' => 'Password salah',
-            ], 401);
+        return response()->json(
+            Arr::except($result, ['status_code', 'success']),
+            $result['status_code']
+        );
+    }
+
+    /**
+     * Get coupons for API (JSON response)
+     */
+    public function apiIndex(Request $request)
+    {
+        $query = Coupon::with('user');
+
+        // Apply filters using service
+        $this->couponService->applyFilters($query, $request);
+
+        // Apply sorting
+        $sortColumn = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        
+        // Validate sort column to prevent SQL injection
+        $allowedColumns = ['code', 'customer_name', 'customer_phone', 'type', 'status', 'created_at', 'expires_at'];
+        if (!in_array($sortColumn, $allowedColumns)) {
+            $sortColumn = 'created_at';
         }
+        
+        // Validate sort direction
+        $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+        
+        $query->orderBy($sortColumn, $sortDirection);
 
-        $coupon = Coupon::where('code', $code)->firstOrFail();
+        $perPage = min((int) $request->get('per_page', 20), 100); // Max 100 items
+        $coupons = $query->paginate($perPage);
 
-        // Verify coupon can be validated
-        if (!$coupon->canBeValidated()) {
-            if ($coupon->status === Coupon::STATUS_USED) {
-                return response()->json([
-                    'message' => 'Kupon sudah digunakan',
-                ], 422);
-            }
-            if ($coupon->status === Coupon::STATUS_EXPIRED || ($coupon->expires_at && $coupon->expires_at->isPast())) {
-                return response()->json([
-                    'message' => 'Kupon sudah kedaluwarsa',
-                ], 422);
-            }
-            return response()->json([
-                'message' => 'Kupon tidak dapat divalidasi',
-            ], 422);
-        }
-
-        // Update coupon status
-        $coupon->status = Coupon::STATUS_USED;
-        $coupon->save();
-
-        // Create validation record
-        CouponValidation::create([
-            'coupon_id' => $coupon->id,
-            'validated_by' => Auth::id(),
-            'validated_at' => now(),
-            'action' => 'used',
-        ]);
+        // Append formatted_phone to each coupon
+        $coupons->getCollection()->transform(function ($coupon) {
+            $coupon->formatted_phone = $coupon->formatted_phone;
+            return $coupon;
+        });
 
         return response()->json([
-            'message' => 'Kupon berhasil divalidasi',
-            'coupon' => [
-                'code' => $coupon->code,
-                'status' => $coupon->status,
-            ],
-        ], 200);
+            'coupons' => $coupons,
+        ]);
     }
 
     /**
@@ -348,46 +210,16 @@ class CouponController extends Controller
             'reason' => ['required', 'string', 'min:10'],
         ]);
 
-        // Verify password
-        if (!Hash::check($request->password, Auth::user()->password)) {
-            return back()->with('error', 'Password salah');
+        $result = $this->couponService->reverse(
+            (int) $id,
+            $request->password,
+            $request->reason
+        );
+
+        if (!$result['success']) {
+            return back()->with('error', $result['message']);
         }
 
-        $coupon = Coupon::findOrFail($id);
-
-        // Verify coupon status is 'used'
-        if ($coupon->status !== Coupon::STATUS_USED) {
-            return back()->with('error', 'Hanya kupon yang sudah digunakan yang dapat dibatalkan');
-        }
-
-        // Update coupon status back to 'active'
-        $coupon->status = Coupon::STATUS_ACTIVE;
-        $coupon->save();
-
-        // Create reversal validation record
-        CouponValidation::create([
-            'coupon_id' => $coupon->id,
-            'validated_by' => Auth::id(),
-            'validated_at' => now(),
-            'action' => 'reversed',
-            'notes' => $request->reason,
-        ]);
-
-        return back()->with('success', 'Penggunaan kupon berhasil dibatalkan');
-    }
-
-    /**
-     * Extract coupon code from URL
-     */
-    private function extractCodeFromUrl(string $input): string
-    {
-        // If it's a full URL, extract the code
-        if (strpos($input, '/coupon/') !== false) {
-            $parts = explode('/coupon/', $input);
-            return end($parts);
-        }
-
-        // If it's just the code, return as is
-        return $input;
+        return back()->with('success', $result['message']);
     }
 }
