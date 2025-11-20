@@ -97,7 +97,10 @@ const toggleStatus = (status: string) => {
 };
 
 const applyFilters = () => {
-    form.get('/coupons', {
+    const queryString = buildQueryString();
+    const url = queryString ? `/coupons?${queryString}` : '/coupons';
+    
+    router.visit(url, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
@@ -115,7 +118,7 @@ const clearFilters = () => {
     form.date_to = '';
     form.expires_from = '';
     form.expires_to = '';
-    form.get('/coupons', {
+    router.get('/coupons', {}, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
@@ -183,11 +186,32 @@ const activeFilterBadges = computed(() => {
 const removeFilter = (key: string) => {
     if (key.startsWith('status-')) {
         const status = key.replace('status-', '');
-        toggleStatus(status);
+        const currentStatus = Array.isArray(form.status) ? form.status : [];
+        form.status = currentStatus.filter((s) => s !== status);
+        applyFilters();
     } else {
         (form as any)[key] = '';
         applyFilters();
     }
+};
+
+const buildQueryString = (page?: number): string => {
+    const searchParams = new URLSearchParams();
+    
+    if (Array.isArray(form.status) && form.status.length > 0) {
+        form.status.forEach((s) => searchParams.append('status[]', s));
+    }
+    if (form.search) searchParams.set('search', form.search);
+    if (form.customer_name) searchParams.set('customer_name', form.customer_name);
+    if (form.customer_phone) searchParams.set('customer_phone', form.customer_phone);
+    if (form.coupon_type) searchParams.set('coupon_type', form.coupon_type);
+    if (form.date_from) searchParams.set('date_from', form.date_from);
+    if (form.date_to) searchParams.set('date_to', form.date_to);
+    if (form.expires_from) searchParams.set('expires_from', form.expires_from);
+    if (form.expires_to) searchParams.set('expires_to', form.expires_to);
+    if (page) searchParams.set('page', String(page));
+    
+    return searchParams.toString();
 };
 
 const breadcrumbs = [
@@ -541,7 +565,7 @@ const breadcrumbs = [
                                     variant="outline"
                                     size="sm"
                                     :disabled="coupons.current_page === 1"
-                                    @click="router.get('/coupons', { ...form.data(), page: coupons.current_page - 1 }, { preserveState: true, preserveScroll: true })"
+                                    @click="router.visit(`/coupons?${buildQueryString(coupons.current_page - 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
                                     Sebelumnya
                                 </Button>
@@ -549,7 +573,7 @@ const breadcrumbs = [
                                     variant="outline"
                                     size="sm"
                                     :disabled="coupons.current_page === coupons.last_page"
-                                    @click="router.get('/coupons', { ...form.data(), page: coupons.current_page + 1 }, { preserveState: true, preserveScroll: true })"
+                                    @click="router.visit(`/coupons?${buildQueryString(coupons.current_page + 1)}`, { preserveState: true, preserveScroll: true })"
                                 >
                                     Selanjutnya
                                 </Button>

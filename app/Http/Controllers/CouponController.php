@@ -22,12 +22,20 @@ class CouponController extends Controller
             ->orderBy('created_at', 'desc');
 
         // Status filter (can be array for multi-select)
-        if ($request->filled('status')) {
-            $status = $request->status;
-            if (is_array($status) && count($status) > 0) {
-                $query->whereIn('status', $status);
-            } elseif (is_string($status) && $status !== 'all') {
-                $query->where('status', $status);
+        // Frontend sends status[]=active&status[]=used format
+        $status = $request->input('status');
+        
+        if ($status) {
+            // Convert to array if it's a single value
+            if (!is_array($status)) {
+                $status = [$status];
+            }
+            // Filter out 'all' and empty values
+            $status = array_filter($status, function($s) {
+                return $s !== 'all' && !empty($s);
+            });
+            if (count($status) > 0) {
+                $query->whereIn('status', array_values($status));
             }
         }
 
