@@ -86,12 +86,16 @@ const statusOptions = [
     { value: 'expired', label: 'Kedaluwarsa' },
 ];
 
-const toggleStatus = (status: string) => {
+const toggleStatus = (status: string, checked: boolean) => {
     const currentStatus = Array.isArray(form.status) ? form.status : [];
-    if (currentStatus.includes(status)) {
-        form.status = currentStatus.filter((s) => s !== status);
+    if (checked) {
+        // Add status if not already present
+        if (!currentStatus.includes(status)) {
+            form.status = [...currentStatus, status];
+        }
     } else {
-        form.status = [...currentStatus, status];
+        // Remove status if present
+        form.status = currentStatus.filter((s) => s !== status);
     }
     applyFilters();
 };
@@ -291,7 +295,7 @@ const breadcrumbs = [
                                     >
                                         <Checkbox
                                             :checked="Array.isArray(form.status) && form.status.includes(option.value)"
-                                            @update:checked="toggleStatus(option.value)"
+                                            @update:checked="(checked) => toggleStatus(option.value, checked)"
                                         />
                                         <span>{{ option.label }}</span>
                                     </label>
