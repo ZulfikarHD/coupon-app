@@ -38,12 +38,12 @@ const passwordStrength = computed(() => {
     if (/\d/.test(p)) score++;
     if (/[^a-zA-Z0-9]/.test(p)) score++;
 
-    if (score <= 1) return { level: 1, label: 'Weak', color: 'bg-red-500' };
-    if (score <= 2) return { level: 2, label: 'Fair', color: 'bg-orange-500' };
-    if (score <= 3) return { level: 3, label: 'Good', color: 'bg-yellow-500' };
+    if (score <= 1) return { level: 1, label: 'Lemah', color: 'bg-red-500' };
+    if (score <= 2) return { level: 2, label: 'Cukup', color: 'bg-orange-500' };
+    if (score <= 3) return { level: 3, label: 'Baik', color: 'bg-yellow-500' };
     if (score <= 4)
-        return { level: 4, label: 'Strong', color: 'bg-emerald-500' };
-    return { level: 5, label: 'Excellent', color: 'bg-sky-500' };
+        return { level: 4, label: 'Kuat', color: 'bg-emerald-500' };
+    return { level: 5, label: 'Sangat Kuat', color: 'bg-sky-500' };
 });
 
 watch(
@@ -58,8 +58,8 @@ watch(
 
 <template>
     <AuthBase
-        title="Create your account"
-        description="Get started with your free account today"
+        title="Buat akun kamu"
+        description="Mulai gratis hari ini"
     >
         <Head title="Register" />
 
@@ -81,7 +81,7 @@ watch(
                 ]"
                 style="transition-delay: 50ms"
             >
-                <Label for="name" class="text-sm font-medium"> Full name </Label>
+                <Label for="name" class="text-sm font-medium"> Nama lengkap </Label>
                 <div class="relative">
                     <Input
                         id="name"
@@ -91,7 +91,7 @@ watch(
                         :tabindex="1"
                         autocomplete="name"
                         name="name"
-                        placeholder="John Doe"
+                        placeholder="Ahmad Rahman"
                         :class="[
                             'ios-input-focus h-12 rounded-xl border-border/50 bg-background/50 pl-11 text-base',
                             'placeholder:text-muted-foreground/50',
@@ -135,7 +135,7 @@ watch(
                 style="transition-delay: 100ms"
             >
                 <Label for="email" class="text-sm font-medium">
-                    Email address
+                    Alamat email
                 </Label>
                 <div class="relative">
                     <Input
@@ -145,7 +145,7 @@ watch(
                         :tabindex="2"
                         autocomplete="email"
                         name="email"
-                        placeholder="you@example.com"
+                        placeholder="kamu@email.com"
                         :class="[
                             'ios-input-focus h-12 rounded-xl border-border/50 bg-background/50 pl-11 text-base',
                             'placeholder:text-muted-foreground/50',
@@ -189,7 +189,7 @@ watch(
                 style="transition-delay: 150ms"
             >
                 <Label for="password" class="text-sm font-medium">
-                    Password
+                    Kata sandi
                 </Label>
                 <div class="relative">
                     <Input
@@ -278,7 +278,7 @@ watch(
                 style="transition-delay: 200ms"
             >
                 <Label for="password_confirmation" class="text-sm font-medium">
-                    Confirm password
+                    Konfirmasi kata sandi
                 </Label>
                 <div class="relative">
                     <Input
@@ -343,8 +343,8 @@ watch(
                     ]"
                 >
                     <Spinner v-if="processing" class="mr-2" />
-                    <span v-if="processing">Creating account...</span>
-                    <span v-else>Create account</span>
+                    <span v-if="processing">Membuat akun...</span>
+                    <span v-else>Buat akun</span>
                 </Button>
             </div>
 
@@ -360,14 +360,14 @@ watch(
                 style="transition-delay: 300ms"
             >
                 <span class="text-muted-foreground">
-                    Already have an account?
+                    Sudah punya akun?
                 </span>
                 <TextLink
                     :href="login()"
                     :tabindex="6"
                     class="ml-1 font-medium text-sky-600 transition-colors hover:text-sky-500 dark:text-sky-400"
                 >
-                    Sign in
+                    Login
                 </TextLink>
             </div>
         </Form>

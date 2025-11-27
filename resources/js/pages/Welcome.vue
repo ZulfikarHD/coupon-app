@@ -36,18 +36,18 @@ onMounted(() => {
 const features = [
     {
         icon: 'coupon',
-        title: 'Smart Coupons',
-        description: 'Create and manage digital coupons with ease',
+        title: 'Kupon Pintar',
+        description: 'Buat dan atur kupon digital tanpa ribet',
     },
     {
         icon: 'scan',
-        title: 'Quick Scan',
-        description: 'Instant QR code scanning for redemption',
+        title: 'Scan Cepat',
+        description: 'Scan kode QR langsung tukar kupon',
     },
     {
         icon: 'analytics',
-        title: 'Analytics',
-        description: 'Track usage and performance in real-time',
+        title: 'Laporan',
+        description: 'Pantau penggunaan dan performa langsung',
     },
 ];
 </script>
@@ -137,7 +137,7 @@ const features = [
                         ]"
                         @click="trigger('light')"
                 >
-                    Dashboard
+                    Dasbor
                 </Link>
                 <template v-else>
                     <Link
@@ -145,7 +145,7 @@ const features = [
                             class="rounded-xl px-5 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground press-effect"
                             @click="trigger('light')"
                     >
-                            Sign in
+                            Login
                     </Link>
                     <Link
                         v-if="canRegister"
@@ -156,7 +156,7 @@ const features = [
                             ]"
                             @click="trigger('light')"
                         >
-                            Get Started
+                            Ayo Mulai
                     </Link>
                 </template>
                 </div>
@@ -185,7 +185,7 @@ const features = [
                                     />
                                 </span>
                     <span class="text-sm font-medium text-foreground/80">
-                        Now with QR scanning
+                        Sekarang ada fitur scan QR
                             </span>
                 </div>
 
@@ -198,11 +198,11 @@ const features = [
                     ]"
                     style="transition-delay: 200ms"
                 >
-                    <span class="block">Manage Coupons</span>
+                    <span class="block">Kelola Kupon</span>
                     <span
                         class="block bg-gradient-to-r from-sky-500 via-cyan-500 to-sky-500 bg-clip-text text-transparent"
                     >
-                        Like Never Before
+                        Dengan Modern
                     </span>
                 </h1>
 
@@ -215,8 +215,8 @@ const features = [
                     ]"
                     style="transition-delay: 300ms"
                 >
-                    The modern way to create, distribute, and track digital coupons.
-                    Beautiful interface, powerful features, seamless experience.
+                    Cara baru kelola kupon digital yang lebih gampang dan menyenangkan.
+                    Antarmuka cantik, fitur lengkap, pengalaman super mulus.
                 </p>
 
                 <!-- CTA Buttons -->
@@ -238,7 +238,7 @@ const features = [
                         ]"
                         @click="trigger('medium')"
                     >
-                        Start for Free
+                        Coba Gratis
                         <svg
                             class="h-5 w-5"
                         fill="none"
@@ -263,10 +263,10 @@ const features = [
                         ]"
                         @click="trigger('medium')"
                     >
-                        Go to Dashboard
+                        Lanjut ke Dasbor
                         <svg
                             class="h-5 w-5"
-                            fill="none"
+                        fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                         >
@@ -276,14 +276,14 @@ const features = [
                                 stroke-width="2"
                                 d="M13 7l5 5m0 0l-5 5m5-5H6"
                             />
-                    </svg>
+                        </svg>
                     </Link>
                     <a
                         href="#features"
                         class="glass rounded-2xl px-8 py-4 text-base font-semibold text-foreground transition-all duration-300 hover:bg-white/20 press-effect dark:hover:bg-white/10"
                         @click="trigger('light')"
                     >
-                        Learn More
+                        Lihat Fitur
                     </a>
                 </div>
             </div>
@@ -375,7 +375,7 @@ const features = [
                 ]"
                 style="transition-delay: 800ms"
             >
-                <span class="text-xs text-muted-foreground/60">Swipe left to sign in</span>
+                <span class="text-xs text-muted-foreground/60">Geser kiri untuk login</span>
                 <div class="flex items-center gap-1">
                     <div class="h-1 w-6 rounded-full bg-sky-500/50" />
                     <div class="h-1 w-1 rounded-full bg-muted-foreground/30" />
@@ -396,20 +396,20 @@ const features = [
         >
             <div class="mx-auto flex max-w-6xl items-center justify-between">
                 <p class="text-sm text-muted-foreground">
-                    © 2024 CouponApp. All rights reserved.
+                    © 2024 CouponApp. Semua hak dilindungi.
                 </p>
                 <div class="flex items-center gap-4">
                     <a
                         href="#"
                         class="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
-                        Privacy
+                        Privasi
                     </a>
                     <a
                         href="#"
                         class="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
-                        Terms
+                        Ketentuan
                     </a>
                 </div>
         </div>

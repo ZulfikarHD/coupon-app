@@ -25,7 +25,7 @@ onMounted(() => {
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
-        title: 'Password settings',
+        title: 'Pengaturan kata sandi',
         href: edit().url,
     },
 ];
@@ -37,7 +37,7 @@ const handleSubmit = () => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbItems">
-        <Head title="Password settings" />
+        <Head title="Pengaturan kata sandi" />
 
         <SettingsLayout>
             <div class="space-y-6 p-4 md:p-0">
@@ -48,8 +48,8 @@ const handleSubmit = () => {
                     ]"
                 >
                     <PageHeader
-                        title="Update password"
-                        description="Ensure your account is using a long, random password to stay secure"
+                        title="Ubah kata sandi"
+                        description="Pastikan akun kamu menggunakan kata sandi yang panjang dan aman"
                     />
                 </div>
 
@@ -72,27 +72,27 @@ const handleSubmit = () => {
                     v-slot="{ errors, processing, recentlySuccessful }"
                 >
                     <div class="grid gap-2 form-field-focus">
-                        <Label for="current_password" class="text-sm font-medium">Current password</Label>
+                        <Label for="current_password" class="text-sm font-medium">Kata sandi saat ini</Label>
                         <Input
                             id="current_password"
                             name="current_password"
                             type="password"
                             class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                             autocomplete="current-password"
-                            placeholder="Current password"
+                            placeholder="Kata sandi saat ini"
                         />
                         <InputError :message="errors.current_password" />
                     </div>
 
                     <div class="grid gap-2 form-field-focus">
-                        <Label for="password" class="text-sm font-medium">New password</Label>
+                        <Label for="password" class="text-sm font-medium">Kata sandi baru</Label>
                         <Input
                             id="password"
                             name="password"
                             type="password"
                             class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                             autocomplete="new-password"
-                            placeholder="New password"
+                            placeholder="Kata sandi baru"
                         />
                         <InputError :message="errors.password" />
                         <p class="text-xs text-muted-foreground">
@@ -101,14 +101,14 @@ const handleSubmit = () => {
                     </div>
 
                     <div class="grid gap-2 form-field-focus">
-                        <Label for="password_confirmation" class="text-sm font-medium">Confirm password</Label>
+                        <Label for="password_confirmation" class="text-sm font-medium">Konfirmasi kata sandi</Label>
                         <Input
                             id="password_confirmation"
                             name="password_confirmation"
                             type="password"
                             class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                             autocomplete="new-password"
-                            placeholder="Confirm password"
+                            placeholder="Konfirmasi kata sandi"
                         />
                         <InputError :message="errors.password_confirmation" />
                     </div>
@@ -123,7 +123,7 @@ const handleSubmit = () => {
                             ]"
                             @click="handleSubmit"
                         >
-                            {{ processing ? 'Saving...' : 'Save password' }}
+                            {{ processing ? 'Menyimpan...' : 'Simpan kata sandi' }}
                         </Button>
 
                         <Transition
@@ -136,7 +136,7 @@ const handleSubmit = () => {
                                 v-show="recentlySuccessful"
                                 class="text-sm text-green-600 font-medium"
                             >
-                                Saved.
+                                Tersimpan.
                             </p>
                         </Transition>
                     </div>

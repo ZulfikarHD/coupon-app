@@ -34,8 +34,8 @@ onMounted(() => {
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
-        title: 'Profile settings',
-        href: edit(),
+        title: 'Pengaturan profil',
+        href: edit().url,
     },
 ];
 
@@ -49,7 +49,7 @@ const handleSubmit = () => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbItems">
-        <Head title="Profile settings" />
+        <Head title="Pengaturan profil" />
 
         <SettingsLayout>
             <div class="flex flex-col space-y-6 p-4 md:p-0">
@@ -60,8 +60,8 @@ const handleSubmit = () => {
                     ]"
                 >
                     <PageHeader
-                        title="Profile information"
-                        description="Update your name and email address"
+                        title="Informasi profil"
+                        description="Perbarui nama dan alamat email kamu"
                     />
                 </div>
 
@@ -75,7 +75,7 @@ const handleSubmit = () => {
                     v-slot="{ errors, processing, recentlySuccessful }"
                 >
                     <div class="grid gap-2 form-field-focus">
-                        <Label for="name" class="text-sm font-medium">Name</Label>
+                        <Label for="name" class="text-sm font-medium">Nama</Label>
                         <Input
                             id="name"
                             class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
@@ -83,13 +83,13 @@ const handleSubmit = () => {
                             :default-value="user.name"
                             required
                             autocomplete="name"
-                            placeholder="Full name"
+                            placeholder="Nama lengkap"
                         />
                         <InputError class="mt-2" :message="errors.name" />
                     </div>
 
                     <div class="grid gap-2 form-field-focus">
-                        <Label for="email" class="text-sm font-medium">Email address</Label>
+                        <Label for="email" class="text-sm font-medium">Alamat email</Label>
                         <Input
                             id="email"
                             type="email"
@@ -98,20 +98,20 @@ const handleSubmit = () => {
                             :default-value="user.email"
                             required
                             autocomplete="username"
-                            placeholder="Email address"
+                            placeholder="Alamat email"
                         />
                         <InputError class="mt-2" :message="errors.email" />
                     </div>
 
                     <div v-if="mustVerifyEmail && !user.email_verified_at" class="rounded-xl border border-orange-500/20 bg-orange-500/10 p-4">
                         <p class="text-sm text-muted-foreground">
-                            Your email address is unverified.
+                            Alamat email kamu belum diverifikasi.
                             <Link
                                 :href="send()"
                                 as="button"
                                 class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500 mt-2 block sm:inline"
                             >
-                                Click here to resend the verification email.
+                                Klik di sini untuk kirim ulang email verifikasi.
                             </Link>
                         </p>
 
@@ -119,7 +119,7 @@ const handleSubmit = () => {
                             v-if="status === 'verification-link-sent'"
                             class="mt-2 text-sm font-medium text-green-600"
                         >
-                            A new verification link has been sent to your email address.
+                            Link verifikasi baru sudah dikirim ke alamat email kamu.
                         </div>
                     </div>
 
@@ -133,7 +133,7 @@ const handleSubmit = () => {
                             ]"
                             @click="handleSubmit"
                         >
-                            {{ processing ? 'Saving...' : 'Save' }}
+                            {{ processing ? 'Menyimpan...' : 'Simpan' }}
                         </Button>
 
                         <Transition
@@ -146,7 +146,7 @@ const handleSubmit = () => {
                                 v-show="recentlySuccessful"
                                 class="text-sm text-green-600 font-medium"
                             >
-                                Saved.
+                                Tersimpan.
                             </p>
                         </Transition>
                     </div>

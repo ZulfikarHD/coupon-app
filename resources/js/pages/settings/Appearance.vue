@@ -22,7 +22,7 @@ onMounted(() => {
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
-        title: 'Appearance settings',
+        title: 'Pengaturan tampilan',
         href: edit().url,
     },
 ];
@@ -30,7 +30,7 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbItems">
-        <Head title="Appearance settings" />
+        <Head title="Pengaturan tampilan" />
 
         <SettingsLayout>
             <div class="space-y-6 p-4 md:p-0">
@@ -41,8 +41,8 @@ const breadcrumbItems: BreadcrumbItem[] = [
                     ]"
                 >
                     <PageHeader
-                        title="Appearance settings"
-                        description="Update your account's appearance settings"
+                        title="Pengaturan tampilan"
+                        description="Atur tampilan akun kamu"
                     />
                 </div>
                 <div
