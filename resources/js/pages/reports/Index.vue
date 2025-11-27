@@ -2,6 +2,8 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import PullToRefresh from '@/components/PullToRefresh.vue';
+import { useHaptic } from '@/composables/useHaptic';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,10 +27,19 @@ import {
     ChevronLeft,
     ChevronRight
 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { type BreadcrumbItem } from '@/types';
 import CustomerCouponsModal from '@/components/CustomerCouponsModal.vue';
 import DailyUsageChart from '@/components/DailyUsageChart.vue';
+
+const { trigger } = useHaptic();
+const isLoaded = ref(false);
+
+onMounted(() => {
+    requestAnimationFrame(() => {
+        isLoaded.value = true;
+    });
+});
 
 interface SummaryStats {
     total_created: number;
@@ -185,7 +196,7 @@ const buildPaginationQuery = (type: 'top_types' | 'customers', page: number): st
     params.set('date_from', form.date_from);
     params.set('date_to', form.date_to);
     params.set('per_page', String(form.per_page));
-    
+
     if (type === 'top_types') {
         params.set('top_types_page', String(page));
         if (form.top_types_sort) params.set('top_types_sort', form.top_types_sort);
@@ -201,7 +212,7 @@ const buildPaginationQuery = (type: 'top_types' | 'customers', page: number): st
         if (form.customers_sort) params.set('customers_sort', form.customers_sort);
         if (form.customers_direction) params.set('customers_direction', form.customers_direction);
     }
-    
+
     return params.toString();
 };
 
@@ -210,7 +221,7 @@ const getPageNumbers = (pagination: any): (number | string)[] => {
     const current = pagination.current_page;
     const last = pagination.last_page;
     const pages: (number | string)[] = [];
-    
+
     if (last <= 7) {
         for (let i = 1; i <= last; i++) {
             pages.push(i);
@@ -232,7 +243,7 @@ const getPageNumbers = (pagination: any): (number | string)[] => {
             pages.push(last);
         }
     }
-    
+
     return pages;
 };
 
@@ -322,7 +333,7 @@ const exportToExcel = () => {
         date_from: form.date_from,
         date_to: form.date_to,
     });
-    
+
     // Create a temporary link to trigger download
     const link = document.createElement('a');
     link.href = `/reports/export?${params.toString()}`;
@@ -330,7 +341,7 @@ const exportToExcel = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // Reset loading state after a delay
     setTimeout(() => {
         isExporting.value = false;
@@ -346,7 +357,7 @@ const exportToCSV = () => {
         date_from: form.date_from,
         date_to: form.date_to,
     });
-    
+
     // Create a temporary link to trigger download
     const link = document.createElement('a');
     link.href = `/reports/export?${params.toString()}`;
@@ -354,7 +365,7 @@ const exportToCSV = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // Reset loading state after a delay
     setTimeout(() => {
         isExporting.value = false;
@@ -378,15 +389,29 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
     <Head title="Laporan" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
-            <!-- Header -->
-            <PageHeader
-                title="Laporan & Analitik"
-                description="Analisis penggunaan kupon dan statistik bisnis"
-            />
+        <PullToRefresh>
+            <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
+                <!-- Header with spring animation -->
+                <div
+                    :class="[
+                        'transition-all duration-500',
+                        isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                    ]"
+                >
+                    <PageHeader
+                        title="Laporan & Analitik"
+                        description="Analisis penggunaan kupon dan statistik bisnis"
+                    />
+                </div>
 
-            <!-- Date Range Filter -->
-            <Card class="border rounded-xl">
+            <!-- Date Range Filter with spring animation -->
+            <Card
+                :class="[
+                    'border rounded-xl',
+                    'transition-all duration-500 delay-100',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                ]"
+            >
                 <CardHeader class="pb-4">
                     <div class="flex items-center gap-2">
                         <BarChart3 class="h-5 w-5 text-primary" />
@@ -406,7 +431,7 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                     v-model="form.date_from"
                                     type="date"
                                     :disabled="isLoading"
-                                    class="w-full h-11 text-base rounded-xl md:h-10 md:text-sm"
+                                    class="w-full h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                                     @change="form.top_types_page = 1; form.customers_page = 1; applyFilters()"
                                 />
                             </div>
@@ -417,7 +442,7 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                     v-model="form.date_to"
                                     type="date"
                                     :disabled="isLoading"
-                                    class="w-full h-11 text-base rounded-xl md:h-10 md:text-sm"
+                                    class="w-full h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                                     @change="form.top_types_page = 1; form.customers_page = 1; applyFilters()"
                                 />
                             </div>
@@ -425,9 +450,9 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    @click="resetFilters"
+                                    @click="trigger('light'); resetFilters()"
                                     :disabled="isLoading"
-                                    class="h-11 w-full sm:w-auto rounded-xl active:scale-[0.98] transition-transform"
+                                    class="h-11 w-full sm:w-auto rounded-xl press-effect"
                                 >
                                     Reset
                                 </Button>
@@ -441,12 +466,17 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                 </CardContent>
             </Card>
 
-            <!-- Summary Stats Cards -->
+            <!-- Summary Stats Cards with staggered spring animation -->
             <div class="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5">
                 <Card
                     v-for="(stat, index) in statCards"
                     :key="index"
-                    class="border transition-all duration-200 hover:shadow-md rounded-xl active:scale-[0.98]"
+                    :class="[
+                        'border rounded-xl card-hover mobile-card-press',
+                        'transition-all duration-500',
+                        isLoaded ? 'animate-spring-up' : 'opacity-0',
+                    ]"
+                    :style="{ animationDelay: `${200 + index * 50}ms` }"
                 >
                     <CardContent class="p-4 sm:p-6">
                         <div class="flex items-start justify-between mb-3">
@@ -468,8 +498,14 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                 </Card>
             </div>
 
-            <!-- Top Coupon Types Table -->
-            <Card class="border rounded-xl">
+            <!-- Top Coupon Types Table with spring animation -->
+            <Card
+                :class="[
+                    'border rounded-xl',
+                    'transition-all duration-500 delay-300',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                ]"
+            >
                 <CardHeader class="pb-4">
                     <div class="flex items-center justify-between">
                         <div>
@@ -485,9 +521,9 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                @click="exportToExcel"
+                                @click="trigger('medium'); exportToExcel()"
                                 :disabled="isExporting"
-                                class="w-full sm:w-auto gap-2 rounded-xl active:scale-[0.98] transition-transform"
+                                class="w-full sm:w-auto gap-2 rounded-xl press-effect"
                             >
                                 <Loader2 v-if="isExporting && exportFormat === 'xlsx'" class="h-4 w-4 animate-spin" />
                                 <FileSpreadsheet v-else class="h-4 w-4" />
@@ -496,9 +532,9 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                @click="exportToCSV"
+                                @click="trigger('medium'); exportToCSV()"
                                 :disabled="isExporting"
-                                class="w-full sm:w-auto gap-2 rounded-xl active:scale-[0.98] transition-transform"
+                                class="w-full sm:w-auto gap-2 rounded-xl press-effect"
                             >
                                 <Loader2 v-if="isExporting && exportFormat === 'csv'" class="h-4 w-4 animate-spin" />
                                 <FileText v-else class="h-4 w-4" />
@@ -515,12 +551,16 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                         description="Tidak ada data kupon dalam periode yang dipilih"
                     />
                     <template v-else>
-                        <!-- Mobile View: Cards -->
+                        <!-- Mobile View: Cards with staggered animation -->
                         <div class="block space-y-3 md:hidden">
                             <Card
                                 v-for="(type, index) in topTypesData"
                                 :key="index"
-                                class="border rounded-xl p-4 active:scale-[0.98] transition-transform"
+                                :class="[
+                                    'border rounded-xl p-4 mobile-card-press',
+                                    isLoaded ? 'animate-spring-up' : 'opacity-0',
+                                ]"
+                                :style="{ animationDelay: `${350 + index * 50}ms` }"
                             >
                                 <div class="space-y-3">
                                     <div class="flex items-start justify-between">
@@ -611,7 +651,11 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                 <tr
                                     v-for="(type, index) in topTypesData"
                                     :key="index"
-                                    class="border-b border-border/50 hover:bg-muted/50 transition-colors"
+                                    :class="[
+                                        'border-b border-border/50 list-row-interactive',
+                                        isLoaded ? 'animate-fade-up' : 'opacity-0',
+                                    ]"
+                                    :style="{ animationDelay: `${350 + index * 30}ms` }"
                                 >
                                     <td class="p-3 text-sm font-medium">
                                         {{ type.type }}
@@ -644,7 +688,7 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                         </table>
                         </div>
                     </template>
-                    
+
                     <!-- Pagination for Top Types -->
                     <div v-if="topTypesPagination && topTypesPagination.last_page > 1" class="border-t p-4">
                         <div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
@@ -663,7 +707,7 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                 >
                                     <ChevronLeft class="h-4 w-4" />
                                 </Button>
-                                
+
                                 <div class="hidden xs:flex gap-1">
                                     <template v-for="page in getPageNumbers(topTypesPagination)" :key="page">
                                         <Button
@@ -672,14 +716,14 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                             size="sm"
                                             class="h-9 min-w-[2.5rem] rounded-xl text-xs active:scale-[0.98] transition-transform"
                                             :class="{ 'bg-primary text-primary-foreground': page === topTypesPagination.current_page }"
-                                            @click="router.get(`/reports?${buildPaginationQuery('top_types', page)}`, { preserveState: true, preserveScroll: true })"
+                                            @click="router.get(`/reports?${buildPaginationQuery('top_types', page as number)}`, { preserveState: true, preserveScroll: true })"
                                         >
                                             {{ page }}
                                         </Button>
                                         <span v-else class="px-2 py-1 text-xs text-muted-foreground">...</span>
                                     </template>
                                 </div>
-                                
+
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -695,8 +739,14 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                 </CardContent>
             </Card>
 
-            <!-- Frequent Customers Table -->
-            <Card class="border rounded-xl">
+            <!-- Frequent Customers Table with spring animation -->
+            <Card
+                :class="[
+                    'border rounded-xl',
+                    'transition-all duration-500 delay-400',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                ]"
+            >
                 <CardHeader class="pb-4">
                     <div class="flex items-center gap-2">
                         <Users class="h-5 w-5 text-primary" />
@@ -714,12 +764,16 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                         description="Tidak ada data pelanggan dalam periode yang dipilih"
                     />
                     <template v-else>
-                        <!-- Mobile View: Cards -->
+                        <!-- Mobile View: Cards with staggered animation -->
                         <div class="block space-y-3 md:hidden">
                             <Card
                                 v-for="(customer, index) in customersData"
                                 :key="index"
-                                class="border rounded-xl p-4 active:scale-[0.98] transition-transform"
+                                :class="[
+                                    'border rounded-xl p-4 mobile-card-press',
+                                    isLoaded ? 'animate-spring-up' : 'opacity-0',
+                                ]"
+                                :style="{ animationDelay: `${450 + index * 50}ms` }"
                             >
                                 <div class="space-y-3">
                                     <div>
@@ -753,8 +807,8 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        @click="viewCustomerCoupons(customer)"
-                                        class="w-full gap-2 rounded-xl active:scale-[0.98] transition-transform"
+                                        @click="trigger('light'); viewCustomerCoupons(customer)"
+                                        class="w-full gap-2 rounded-xl press-effect"
                                     >
                                         <Eye class="h-4 w-4" />
                                         Lihat Kupon
@@ -824,7 +878,11 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                 <tr
                                     v-for="(customer, index) in customersData"
                                     :key="index"
-                                    class="border-b border-border/50 hover:bg-muted/50 transition-colors"
+                                    :class="[
+                                        'border-b border-border/50 list-row-interactive',
+                                        isLoaded ? 'animate-fade-up' : 'opacity-0',
+                                    ]"
+                                    :style="{ animationDelay: `${450 + index * 30}ms` }"
                                 >
                                     <td class="p-3 text-sm font-medium">
                                         {{ customer.customer_name }}
@@ -857,8 +915,8 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            @click="viewCustomerCoupons(customer)"
-                                            class="gap-2 rounded-xl active:scale-[0.98] transition-transform"
+                                            @click="trigger('light'); viewCustomerCoupons(customer)"
+                                            class="gap-2 rounded-xl press-effect"
                                         >
                                             <Eye class="h-4 w-4" />
                                             Lihat Kupon
@@ -869,7 +927,7 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                         </table>
                         </div>
                     </template>
-                    
+
                     <!-- Pagination for Frequent Customers -->
                     <div v-if="customersPagination && customersPagination.last_page > 1" class="border-t p-4">
                         <div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
@@ -888,7 +946,7 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                 >
                                     <ChevronLeft class="h-4 w-4" />
                                 </Button>
-                                
+
                                 <div class="hidden xs:flex gap-1">
                                     <template v-for="page in getPageNumbers(customersPagination)" :key="page">
                                         <Button
@@ -897,14 +955,14 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                                             size="sm"
                                             class="h-9 min-w-[2.5rem] rounded-xl text-xs active:scale-[0.98] transition-transform"
                                             :class="{ 'bg-primary text-primary-foreground': page === customersPagination.current_page }"
-                                            @click="router.get(`/reports?${buildPaginationQuery('customers', page)}`, { preserveState: true, preserveScroll: true })"
+                                            @click="router.get(`/reports?${buildPaginationQuery('customers', page as number)}`, { preserveState: true, preserveScroll: true })"
                                         >
                                             {{ page }}
                                         </Button>
                                         <span v-else class="px-2 py-1 text-xs text-muted-foreground">...</span>
                                     </template>
                                 </div>
-                                
+
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -920,8 +978,14 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                 </CardContent>
             </Card>
 
-            <!-- Daily Usage Chart Placeholder -->
-            <Card class="border rounded-xl">
+            <!-- Daily Usage Chart with spring animation -->
+            <Card
+                :class="[
+                    'border rounded-xl',
+                    'transition-all duration-500 delay-500',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                ]"
+            >
                 <CardHeader class="pb-4">
                     <div class="flex items-center gap-2">
                         <BarChart3 class="h-5 w-5 text-primary" />
@@ -941,7 +1005,8 @@ const viewCustomerCoupons = (customer: FrequentCustomer) => {
                     <DailyUsageChart v-else :data="dailyUsage" />
                 </CardContent>
             </Card>
-        </div>
+            </div>
+        </PullToRefresh>
 
         <!-- Customer Coupons Modal -->
         <CustomerCouponsModal

@@ -3,6 +3,8 @@ import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileCo
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
+import { useHaptic } from '@/composables/useHaptic';
+import { ref, onMounted } from 'vue';
 
 import DeleteUser from '@/components/DeleteUser.vue';
 import PageHeader from '@/components/PageHeader.vue';
@@ -21,6 +23,15 @@ interface Props {
 
 defineProps<Props>();
 
+const { trigger } = useHaptic();
+const isLoaded = ref(false);
+
+onMounted(() => {
+    requestAnimationFrame(() => {
+        isLoaded.value = true;
+    });
+});
+
 const breadcrumbItems: BreadcrumbItem[] = [
     {
         title: 'Profile settings',
@@ -30,6 +41,10 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
 const page = usePage();
 const user = page.props.auth.user;
+
+const handleSubmit = () => {
+    trigger('medium');
+};
 </script>
 
 <template>
@@ -38,21 +53,32 @@ const user = page.props.auth.user;
 
         <SettingsLayout>
             <div class="flex flex-col space-y-6 p-4 md:p-0">
-                <PageHeader
-                    title="Profile information"
-                    description="Update your name and email address"
-                />
+                <div
+                    :class="[
+                        'transition-all duration-500',
+                        isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                    ]"
+                >
+                    <PageHeader
+                        title="Profile information"
+                        description="Update your name and email address"
+                    />
+                </div>
 
                 <Form
                     v-bind="ProfileController.update.form()"
-                    class="space-y-6"
+                    :class="[
+                        'space-y-6',
+                        'transition-all duration-500 delay-100',
+                        isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                    ]"
                     v-slot="{ errors, processing, recentlySuccessful }"
                 >
-                    <div class="grid gap-2">
+                    <div class="grid gap-2 form-field-focus">
                         <Label for="name" class="text-sm font-medium">Name</Label>
                         <Input
                             id="name"
-                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                            class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                             name="name"
                             :default-value="user.name"
                             required
@@ -62,12 +88,12 @@ const user = page.props.auth.user;
                         <InputError class="mt-2" :message="errors.name" />
                     </div>
 
-                    <div class="grid gap-2">
+                    <div class="grid gap-2 form-field-focus">
                         <Label for="email" class="text-sm font-medium">Email address</Label>
                         <Input
                             id="email"
                             type="email"
-                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                            class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                             name="email"
                             :default-value="user.email"
                             required
@@ -101,7 +127,11 @@ const user = page.props.auth.user;
                         <Button
                             :disabled="processing"
                             data-test="update-profile-button"
-                            class="h-11 w-full sm:w-auto rounded-xl active:scale-[0.98] transition-transform"
+                            :class="[
+                                'h-11 w-full sm:w-auto rounded-xl',
+                                'btn-gradient press-effect',
+                            ]"
+                            @click="handleSubmit"
                         >
                             {{ processing ? 'Saving...' : 'Save' }}
                         </Button>

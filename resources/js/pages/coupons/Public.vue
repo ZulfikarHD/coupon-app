@@ -6,6 +6,9 @@ import { QrCode, CheckCircle2, XCircle, Clock, Sparkles, Gift, Star } from 'luci
 import { onMounted, ref, computed } from 'vue';
 import QRCode from 'qrcode';
 
+// iOS animation state
+const isLoaded = ref(false);
+
 interface Coupon {
     id: number;
     code: string;
@@ -82,6 +85,11 @@ onMounted(async () => {
     } catch (err) {
         console.error('Failed to generate QR code:', err);
     }
+    
+    // iOS spring animation on load
+    requestAnimationFrame(() => {
+        isLoaded.value = true;
+    });
 });
 </script>
 
@@ -112,9 +120,20 @@ onMounted(async () => {
         </div>
 
         <div class="relative mx-auto max-w-md px-4 py-8 md:py-12">
-            <!-- Header with icon -->
-            <div class="mb-8 text-center">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/60 mb-4 shadow-lg">
+            <!-- Header with icon - with spring animation -->
+            <div 
+                :class="[
+                    'mb-8 text-center',
+                    'transition-all duration-700',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0',
+                ]"
+            >
+                <div 
+                    :class="[
+                        'inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/60 mb-4 shadow-lg',
+                        isLoaded ? 'animate-bounce-in' : '',
+                    ]"
+                >
                     <Gift class="h-8 w-8 text-primary-foreground" />
                 </div>
                 <h1 class="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent md:text-4xl">
@@ -125,8 +144,14 @@ onMounted(async () => {
                 </p>
             </div>
 
-            <!-- Coupon Card with gradient border effect -->
-            <Card class="border-2 shadow-2xl relative overflow-hidden bg-card/95 backdrop-blur-sm">
+            <!-- Coupon Card with gradient border effect - with spring animation -->
+            <Card 
+                :class="[
+                    'border-2 shadow-2xl relative overflow-hidden bg-card/95 backdrop-blur-sm',
+                    'transition-all duration-700 delay-100',
+                    isLoaded ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95',
+                ]"
+            >
                 <!-- Decorative corner elements -->
                 <div class="absolute top-0 left-0 w-20 h-20 bg-gradient-to-br from-primary/20 to-transparent rounded-br-full"></div>
                 <div class="absolute bottom-0 right-0 w-20 h-20 bg-gradient-to-tl from-accent/20 to-transparent rounded-tl-full"></div>
@@ -165,7 +190,11 @@ onMounted(async () => {
 
                             <div
                                 v-if="qrCodeDataUrl"
-                                class="relative rounded-2xl border-4 border-dashed border-primary/30 p-4 sm:p-6 bg-white dark:bg-gray-900 shadow-xl transition-all hover:scale-105 hover:shadow-2xl"
+                                :class="[
+                                    'relative rounded-2xl border-4 border-dashed border-primary/30 p-4 sm:p-6 bg-white dark:bg-gray-900 shadow-xl',
+                                    'transition-all duration-300 press-effect',
+                                    'hover:scale-105 hover:shadow-2xl',
+                                ]"
                             >
                                 <div class="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full animate-ping"></div>
                                 <img
@@ -252,9 +281,15 @@ onMounted(async () => {
                 </CardContent>
             </Card>
 
-            <!-- Footer Note with better styling -->
-            <div class="mt-8 text-center space-y-2">
-                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
+            <!-- Footer Note with better styling - with spring animation -->
+            <div 
+                :class="[
+                    'mt-8 text-center space-y-2',
+                    'transition-all duration-700 delay-200',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                ]"
+            >
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 press-effect">
                     <QrCode class="h-4 w-4 text-primary" />
                     <p class="text-xs font-medium text-foreground">
                         Tunjukkan QR Code ini kepada kasir

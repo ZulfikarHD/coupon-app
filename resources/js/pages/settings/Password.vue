@@ -6,11 +6,22 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { edit } from '@/routes/user-password';
 import { Form, Head } from '@inertiajs/vue3';
+import { useHaptic } from '@/composables/useHaptic';
+import { ref, onMounted } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { type BreadcrumbItem } from '@/types';
+
+const { trigger } = useHaptic();
+const isLoaded = ref(false);
+
+onMounted(() => {
+    requestAnimationFrame(() => {
+        isLoaded.value = true;
+    });
+});
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
@@ -18,6 +29,10 @@ const breadcrumbItems: BreadcrumbItem[] = [
         href: edit().url,
     },
 ];
+
+const handleSubmit = () => {
+    trigger('medium');
+};
 </script>
 
 <template>
@@ -26,10 +41,17 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
         <SettingsLayout>
             <div class="space-y-6 p-4 md:p-0">
-                <PageHeader
-                    title="Update password"
-                    description="Ensure your account is using a long, random password to stay secure"
-                />
+                <div
+                    :class="[
+                        'transition-all duration-500',
+                        isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                    ]"
+                >
+                    <PageHeader
+                        title="Update password"
+                        description="Ensure your account is using a long, random password to stay secure"
+                    />
+                </div>
 
                 <Form
                     v-bind="PasswordController.update.form()"
@@ -42,29 +64,33 @@ const breadcrumbItems: BreadcrumbItem[] = [
                         'password_confirmation',
                         'current_password',
                     ]"
-                    class="space-y-6"
+                    :class="[
+                        'space-y-6',
+                        'transition-all duration-500 delay-100',
+                        isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                    ]"
                     v-slot="{ errors, processing, recentlySuccessful }"
                 >
-                    <div class="grid gap-2">
+                    <div class="grid gap-2 form-field-focus">
                         <Label for="current_password" class="text-sm font-medium">Current password</Label>
                         <Input
                             id="current_password"
                             name="current_password"
                             type="password"
-                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                            class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                             autocomplete="current-password"
                             placeholder="Current password"
                         />
                         <InputError :message="errors.current_password" />
                     </div>
 
-                    <div class="grid gap-2">
+                    <div class="grid gap-2 form-field-focus">
                         <Label for="password" class="text-sm font-medium">New password</Label>
                         <Input
                             id="password"
                             name="password"
                             type="password"
-                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                            class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                             autocomplete="new-password"
                             placeholder="New password"
                         />
@@ -74,13 +100,13 @@ const breadcrumbItems: BreadcrumbItem[] = [
                         </p>
                     </div>
 
-                    <div class="grid gap-2">
+                    <div class="grid gap-2 form-field-focus">
                         <Label for="password_confirmation" class="text-sm font-medium">Confirm password</Label>
                         <Input
                             id="password_confirmation"
                             name="password_confirmation"
                             type="password"
-                            class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                            class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                             autocomplete="new-password"
                             placeholder="Confirm password"
                         />
@@ -91,7 +117,11 @@ const breadcrumbItems: BreadcrumbItem[] = [
                         <Button
                             :disabled="processing"
                             data-test="update-password-button"
-                            class="h-11 w-full sm:w-auto rounded-xl active:scale-[0.98] transition-transform"
+                            :class="[
+                                'h-11 w-full sm:w-auto rounded-xl',
+                                'btn-gradient press-effect',
+                            ]"
+                            @click="handleSubmit"
                         >
                             {{ processing ? 'Saving...' : 'Save password' }}
                         </Button>

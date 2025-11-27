@@ -14,6 +14,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { User, Mail, Lock, Shield, ChevronDown } from 'lucide-vue-next';
 import InputError from '@/components/InputError.vue';
+import { useHaptic } from '@/composables/useHaptic';
+import { ref, onMounted } from 'vue';
+
+const { trigger } = useHaptic();
+const isLoaded = ref(false);
+
+onMounted(() => {
+    requestAnimationFrame(() => {
+        isLoaded.value = true;
+    });
+});
 
 const form = useForm({
     name: '',
@@ -24,6 +35,7 @@ const form = useForm({
 });
 
 const submit = () => {
+    trigger('medium');
     form.post('/users', {
         preserveScroll: true,
     });
@@ -46,14 +58,27 @@ const breadcrumbs = [
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
-            <!-- Header -->
-            <PageHeader
-                title="Tambah User Baru"
-                description="Buat akun user baru untuk sistem"
-            />
+            <!-- Header with spring animation -->
+            <div
+                :class="[
+                    'transition-all duration-500',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                ]"
+            >
+                <PageHeader
+                    title="Tambah User Baru"
+                    description="Buat akun user baru untuk sistem"
+                />
+            </div>
 
-            <!-- Form -->
-            <Card class="border rounded-xl">
+            <!-- Form with spring animation -->
+            <Card 
+                :class="[
+                    'border rounded-xl',
+                    'transition-all duration-500 delay-100',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                ]"
+            >
                 <CardHeader class="pb-4">
                     <div class="flex items-center gap-2">
                         <User class="h-5 w-5 text-primary" />
@@ -66,7 +91,7 @@ const breadcrumbs = [
                 <CardContent>
                     <form @submit.prevent="submit" class="space-y-6">
                         <!-- Name -->
-                        <div class="space-y-2">
+                        <div class="space-y-2 form-field-focus">
                             <Label for="name">
                                 <div class="flex items-center gap-2">
                                     <User class="h-4 w-4" />
@@ -80,14 +105,14 @@ const breadcrumbs = [
                                 placeholder="Masukkan nama lengkap"
                                 required
                                 autocomplete="name"
-                                class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                                class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                                 :class="{ 'border-destructive': form.errors.name }"
                             />
                             <InputError :message="form.errors.name" />
                         </div>
 
                         <!-- Email -->
-                        <div class="space-y-2">
+                        <div class="space-y-2 form-field-focus">
                             <Label for="email">
                                 <div class="flex items-center gap-2">
                                     <Mail class="h-4 w-4" />
@@ -101,14 +126,14 @@ const breadcrumbs = [
                                 placeholder="user@example.com"
                                 required
                                 autocomplete="email"
-                                class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                                class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                                 :class="{ 'border-destructive': form.errors.email }"
                             />
                             <InputError :message="form.errors.email" />
                         </div>
 
                         <!-- Password -->
-                        <div class="space-y-2">
+                        <div class="space-y-2 form-field-focus">
                             <Label for="password">
                                 <div class="flex items-center gap-2">
                                     <Lock class="h-4 w-4" />
@@ -122,7 +147,7 @@ const breadcrumbs = [
                                 placeholder="Minimal 8 karakter"
                                 required
                                 autocomplete="new-password"
-                                class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                                class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                                 :class="{ 'border-destructive': form.errors.password }"
                             />
                             <p class="text-xs text-muted-foreground">
@@ -132,7 +157,7 @@ const breadcrumbs = [
                         </div>
 
                         <!-- Password Confirmation -->
-                        <div class="space-y-2">
+                        <div class="space-y-2 form-field-focus">
                             <Label for="password_confirmation">
                                 <div class="flex items-center gap-2">
                                     <Lock class="h-4 w-4" />
@@ -146,7 +171,7 @@ const breadcrumbs = [
                                 placeholder="Ulangi password"
                                 required
                                 autocomplete="new-password"
-                                class="h-11 text-base rounded-xl md:h-10 md:text-sm"
+                                class="h-11 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                                 :class="{ 'border-destructive': form.errors.password_confirmation }"
                             />
                             <InputError :message="form.errors.password_confirmation" />
@@ -164,8 +189,9 @@ const breadcrumbs = [
                                 <DropdownMenuTrigger as-child>
                                     <Button
                                         variant="outline"
-                                        class="w-full h-11 justify-between rounded-xl active:scale-[0.98] transition-transform"
+                                        class="w-full h-11 justify-between rounded-xl press-effect"
                                         :class="{ 'border-destructive': form.errors.role }"
+                                        @click="trigger('light')"
                                     >
                                         {{ form.role === 'admin' ? 'Admin' : 'User' }}
                                         <ChevronDown class="ml-2 h-4 w-4 opacity-50" />
@@ -173,13 +199,13 @@ const breadcrumbs = [
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent class="w-full">
                                     <DropdownMenuItem
-                                        @click="form.role = 'user'"
+                                        @click="trigger('light'); form.role = 'user'"
                                         :class="{ 'bg-accent': form.role === 'user' }"
                                     >
                                         User
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                        @click="form.role = 'admin'"
+                                        @click="trigger('light'); form.role = 'admin'"
                                         :class="{ 'bg-accent': form.role === 'admin' }"
                                     >
                                         Admin
@@ -190,12 +216,18 @@ const breadcrumbs = [
                         </div>
 
                         <!-- Actions -->
-                        <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                        <div 
+                            :class="[
+                                'flex flex-col gap-3 sm:flex-row sm:justify-end',
+                                'transition-all duration-500 delay-200',
+                                isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                            ]"
+                        >
                             <Button
                                 type="submit"
                                 :disabled="form.processing"
                                 size="lg"
-                                class="h-12 w-full gap-2 rounded-xl shadow-lg active:scale-[0.98] transition-transform sm:w-auto sm:h-11"
+                                class="h-12 w-full gap-2 rounded-xl btn-gradient press-effect sm:w-auto sm:h-11"
                             >
                                 {{ form.processing ? 'Menyimpan...' : 'Simpan' }}
                             </Button>
@@ -204,9 +236,9 @@ const breadcrumbs = [
                                 variant="outline"
                                 as-child
                                 size="lg"
-                                class="h-11 w-full rounded-xl active:scale-[0.98] transition-transform sm:w-auto"
+                                class="h-11 w-full rounded-xl press-effect sm:w-auto"
                             >
-                                <a href="/users">Batal</a>
+                                <a href="/users" @click="trigger('light')">Batal</a>
                             </Button>
                         </div>
                     </form>

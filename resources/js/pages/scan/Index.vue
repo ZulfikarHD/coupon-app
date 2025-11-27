@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useHaptic } from '@/composables/useHaptic';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,9 @@ import { ScanLine, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Loader2, C
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useSweetAlert } from '@/composables/useSweetAlert';
 import jsQR from 'jsqr';
+
+const { trigger } = useHaptic();
+const isLoaded = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -209,6 +213,8 @@ const checkCoupon = async (code: string): Promise<{ success: boolean; data?: any
 };
 
 const handleScannedCode = async (decodedText: string) => {
+    // Haptic feedback on scan
+    trigger('success');
     // Stop scanning temporarily
     stopCamera();
 
@@ -332,6 +338,9 @@ const handleModalClose = () => {
 
 // Lifecycle
 onMounted(() => {
+    requestAnimationFrame(() => {
+        isLoaded.value = true;
+    });
     setTimeout(() => {
         startCamera();
     }, 200);
@@ -354,10 +363,18 @@ router.on('before', () => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
-            <Card class="border rounded-xl">
+            <Card
+                :class="[
+                    'glass-strong border-0 rounded-2xl overflow-hidden',
+                    'transition-all duration-500',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                ]"
+            >
                 <CardHeader class="pb-4">
                     <div class="flex items-center gap-2">
-                        <ScanLine class="h-5 w-5 text-primary" />
+                        <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-500">
+                            <ScanLine class="h-4 w-4 text-white" />
+                        </div>
                         <CardTitle class="text-base sm:text-lg font-semibold">Scan Kupon</CardTitle>
                     </div>
                     <CardDescription class="text-sm mt-1">

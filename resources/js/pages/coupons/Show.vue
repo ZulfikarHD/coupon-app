@@ -36,6 +36,7 @@ import {
 import { onMounted, ref, computed, watch } from 'vue';
 import QRCode from 'qrcode';
 import { useSweetAlert } from '@/composables/useSweetAlert';
+import { useHaptic } from '@/composables/useHaptic';
 
 interface Coupon {
     id: number;
@@ -75,6 +76,8 @@ interface Props {
 const props = defineProps<Props>();
 
 const swal = useSweetAlert();
+const { trigger } = useHaptic();
+const isLoaded = ref(false);
 const qrCodeDataUrl = ref('');
 const isCopying = ref(false);
 const showReversalModal = ref(false);
@@ -227,6 +230,11 @@ onMounted(async () => {
     } catch (err) {
         console.error('Failed to generate QR code:', err);
     }
+    
+    // iOS spring animation on load
+    requestAnimationFrame(() => {
+        isLoaded.value = true;
+    });
 });
 
 const breadcrumbs = [
@@ -246,14 +254,20 @@ const breadcrumbs = [
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
-            <!-- Header -->
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <!-- Header with spring animation -->
+            <div 
+                :class="[
+                    'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between',
+                    'transition-all duration-500',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                ]"
+            >
                 <div class="flex items-center gap-4">
                     <Button
                         variant="ghost"
                         size="icon"
-                        class="h-10 w-10 rounded-xl active:scale-[0.98] transition-transform"
-                        @click="$inertia.visit('/coupons')"
+                        class="h-10 w-10 rounded-xl press-effect"
+                        @click="trigger('light'); $inertia.visit('/coupons')"
                     >
                         <ArrowLeft class="h-5 w-5" />
                     </Button>
@@ -266,9 +280,9 @@ const breadcrumbs = [
                     <Button
                         variant="outline"
                         size="lg"
-                        class="h-11 flex-1 gap-2 rounded-xl min-w-[120px] active:scale-[0.98] transition-transform sm:flex-initial"
+                        class="h-11 flex-1 gap-2 rounded-xl min-w-[120px] press-effect sm:flex-initial"
                         :disabled="isCopying"
-                        @click="copyToClipboard"
+                        @click="trigger('medium'); copyToClipboard($event)"
                     >
                         <Copy class="h-4 w-4" />
                         <span class="text-sm">{{ isCopying ? 'Menyalin...' : 'Salin Link' }}</span>
@@ -277,8 +291,8 @@ const breadcrumbs = [
                         v-if="coupon.status === 'used'"
                         variant="outline"
                         size="lg"
-                        class="h-11 flex-1 gap-2 rounded-xl border-orange-500 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 min-w-[120px] active:scale-[0.98] transition-transform sm:flex-initial"
-                        @click="openReversalModal"
+                        class="h-11 flex-1 gap-2 rounded-xl border-orange-500 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 min-w-[120px] press-effect sm:flex-initial"
+                        @click="trigger('medium'); openReversalModal()"
                     >
                         <RotateCcw class="h-4 w-4" />
                         <span class="text-sm">Batalkan</span>
@@ -286,8 +300,8 @@ const breadcrumbs = [
                     <Button
                         variant="destructive"
                         size="lg"
-                        class="h-11 flex-1 gap-2 rounded-xl min-w-[120px] active:scale-[0.98] transition-transform sm:flex-initial"
-                        @click="deleteCoupon"
+                        class="h-11 flex-1 gap-2 rounded-xl min-w-[120px] press-effect sm:flex-initial"
+                        @click="trigger('heavy'); deleteCoupon()"
                     >
                         <Trash2 class="h-4 w-4" />
                         <span class="text-sm">Hapus</span>
@@ -307,8 +321,14 @@ const breadcrumbs = [
 
             <div class="grid gap-4 sm:gap-6 lg:grid-cols-3">
                 <!-- QR Code - Show first on mobile, sidebar on desktop -->
-                <div class="space-y-6 order-first lg:order-last">
-                    <Card class="border rounded-xl sticky top-4">
+                <div 
+                    :class="[
+                        'space-y-6 order-first lg:order-last',
+                        'transition-all duration-500 delay-100',
+                        isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                    ]"
+                >
+                    <Card class="border rounded-xl sticky top-4 card-hover">
                         <CardHeader class="pb-4">
                             <div class="flex items-center gap-2">
                                 <QrCode class="h-5 w-5 text-primary" />
@@ -345,7 +365,13 @@ const breadcrumbs = [
                 <!-- Main Content -->
                 <div class="space-y-4 sm:space-y-6 lg:col-span-2 order-last lg:order-first">
                     <!-- Coupon Info Card -->
-                    <Card class="border rounded-xl">
+                    <Card 
+                        :class="[
+                            'border rounded-xl',
+                            'transition-all duration-500 delay-150',
+                            isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                        ]"
+                    >
                         <CardHeader class="pb-4">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
@@ -400,7 +426,13 @@ const breadcrumbs = [
                     </Card>
 
                     <!-- Customer Info Card -->
-                    <Card class="border rounded-xl">
+                    <Card 
+                        :class="[
+                            'border rounded-xl',
+                            'transition-all duration-500 delay-200',
+                            isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                        ]"
+                    >
                         <CardHeader class="pb-4">
                             <div class="flex items-center gap-2">
                                 <User class="h-5 w-5 text-primary" />
@@ -451,7 +483,14 @@ const breadcrumbs = [
                     </Card>
 
                     <!-- Validation History -->
-                    <Card v-if="coupon.validations && coupon.validations.length > 0" class="border rounded-xl">
+                    <Card 
+                        v-if="coupon.validations && coupon.validations.length > 0" 
+                        :class="[
+                            'border rounded-xl',
+                            'transition-all duration-500 delay-250',
+                            isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                        ]"
+                    >
                         <CardHeader class="pb-4">
                             <CardTitle class="text-lg font-semibold">Riwayat Validasi</CardTitle>
                             <CardDescription class="text-sm mt-1">
@@ -461,9 +500,14 @@ const breadcrumbs = [
                         <CardContent>
                             <div class="space-y-4">
                                 <div
-                                    v-for="validation in coupon.validations"
+                                    v-for="(validation, index) in coupon.validations"
                                     :key="validation.id"
-                                    class="flex items-start gap-3 sm:gap-4 rounded-xl border p-3 sm:p-4 transition-all duration-200 hover:bg-muted/50 active:bg-muted/50 active:scale-[0.98]"
+                                    :class="[
+                                        'flex items-start gap-3 sm:gap-4 rounded-xl border p-3 sm:p-4',
+                                        'transition-all duration-300 mobile-card-press',
+                                        isLoaded ? 'animate-spring-up' : 'opacity-0',
+                                    ]"
+                                    :style="{ animationDelay: `${300 + index * 50}ms` }"
                                 >
                                     <div
                                         :class="[

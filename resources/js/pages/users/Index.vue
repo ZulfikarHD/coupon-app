@@ -3,7 +3,10 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
+import PullToRefresh from '@/components/PullToRefresh.vue';
+import SwipeableListItem from '@/components/SwipeableListItem.vue';
 import { useStatusColors } from '@/composables/useStatusColors';
+import { useHaptic } from '@/composables/useHaptic';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,8 +20,17 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Plus, Search, Edit, Trash2, User as UserIcon, Shield, Users, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import EditUserModal from '@/components/EditUserModal.vue';
+
+const { trigger } = useHaptic();
+const isLoaded = ref(false);
+
+onMounted(() => {
+    requestAnimationFrame(() => {
+        isLoaded.value = true;
+    });
+});
 import {
     Dialog,
     DialogClose,
@@ -161,8 +173,21 @@ const showEditModal = ref(false);
 const selectedUser = ref<User | null>(null);
 
 const openEditModal = (user: User) => {
+    trigger('light');
     selectedUser.value = user;
     showEditModal.value = true;
+};
+
+// Stagger delay for list items
+const getStaggerClass = (index: number): string => {
+    const staggerIndex = Math.min(index + 1, 15);
+    return `stagger-${staggerIndex}`;
+};
+
+// Handle swipe delete
+const handleSwipeDelete = async (userId: number) => {
+    trigger('heavy');
+    deleteUser(userId);
 };
 </script>
 
@@ -170,27 +195,44 @@ const openEditModal = (user: User) => {
     <Head title="User Management" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
-            <!-- Header -->
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <PageHeader
-                    title="User Management"
-                    description="Kelola pengguna sistem"
-                />
-                <Button as-child size="lg" class="h-12 w-full gap-2 rounded-xl active:scale-[0.98] transition-transform sm:w-auto sm:h-11">
-                    <Link href="/users/create">
-                        <Plus class="h-5 w-5" />
-                        Tambah User
-                    </Link>
-                </Button>
-            </div>
+        <PullToRefresh>
+            <div class="flex h-full flex-1 flex-col gap-4 sm:gap-6 overflow-x-auto p-4 md:p-6">
+                <!-- Header with spring animation -->
+                <div 
+                    :class="[
+                        'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between',
+                        'transition-all duration-500',
+                        isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                    ]"
+                >
+                    <PageHeader
+                        title="User Management"
+                        description="Kelola pengguna sistem"
+                    />
+                    <Button 
+                        as-child 
+                        size="lg" 
+                        class="h-12 w-full gap-2 rounded-xl press-effect btn-gradient sm:w-auto sm:h-11"
+                    >
+                        <Link href="/users/create" @click="trigger('medium')">
+                            <Plus class="h-5 w-5" />
+                            Tambah User
+                        </Link>
+                    </Button>
+                </div>
 
-            <!-- Filters -->
-            <Card class="border rounded-xl">
+            <!-- Filters with spring animation -->
+            <Card 
+                :class="[
+                    'border rounded-xl',
+                    'transition-all duration-500 delay-100',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                ]"
+            >
                 <CardContent class="pt-6">
                     <form @submit.prevent="applyFilters" class="space-y-4">
                         <!-- Search Input -->
-                        <div class="space-y-2">
+                        <div class="space-y-2 form-field-focus">
                             <Label class="text-sm font-medium">Cari User</Label>
                             <div class="relative">
                                 <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -198,7 +240,7 @@ const openEditModal = (user: User) => {
                                     v-model="form.search"
                                     type="text"
                                     placeholder="Cari nama atau email..."
-                                    class="h-11 pl-10 text-base rounded-xl md:h-10 md:text-sm"
+                                    class="h-11 pl-10 text-base rounded-xl ios-input-focus md:h-10 md:text-sm"
                                     @input="applyFilters"
                                 />
                             </div>
@@ -211,8 +253,9 @@ const openEditModal = (user: User) => {
                                 <DropdownMenuTrigger as-child>
                                     <Button
                                         variant="outline"
-                                        class="w-full h-11 justify-between rounded-xl active:scale-[0.98] transition-transform"
+                                        class="w-full h-11 justify-between rounded-xl press-effect"
                                         :class="{ 'border-destructive': form.errors.role }"
+                                        @click="trigger('light')"
                                     >
                                         {{ form.role === 'all' ? 'Semua Role' : form.role === 'admin' ? 'Admin' : 'User' }}
                                         <ChevronDown class="ml-2 h-4 w-4 opacity-50" />
@@ -246,9 +289,9 @@ const openEditModal = (user: User) => {
                             <Button
                                 type="button"
                                 variant="outline"
-                                @click="resetFilters"
+                                @click="trigger('light'); resetFilters()"
                                 :disabled="form.processing"
-                                class="flex-1 h-11 rounded-xl active:scale-[0.98] transition-transform"
+                                class="flex-1 h-11 rounded-xl press-effect"
                             >
                                 Reset
                             </Button>
@@ -257,8 +300,14 @@ const openEditModal = (user: User) => {
                 </CardContent>
             </Card>
 
-            <!-- Users Table -->
-            <Card class="border rounded-xl">
+            <!-- Users Table with spring animation -->
+            <Card 
+                :class="[
+                    'border rounded-xl',
+                    'transition-all duration-500 delay-200',
+                    isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+                ]"
+            >
                 <CardHeader class="pb-4">
                     <div class="flex items-center gap-2">
                         <Users class="h-5 w-5 text-primary" />
@@ -274,14 +323,21 @@ const openEditModal = (user: User) => {
                         :icon="UserIcon"
                         title="Tidak ada user ditemukan"
                     />
-                    <!-- Mobile View: Cards -->
+                    <!-- Mobile View: Cards with swipe-to-delete -->
                     <template v-else>
                         <div class="block space-y-3 md:hidden">
-                            <Card
-                                v-for="user in props.users.data"
+                            <SwipeableListItem
+                                v-for="(user, index) in props.users.data"
                                 :key="user.id"
-                                class="border rounded-xl p-4 active:scale-[0.98] transition-transform"
+                                @delete="handleSwipeDelete(user.id)"
                             >
+                                <Card
+                                    :class="[
+                                        'border rounded-xl p-4 mobile-card-press',
+                                        isLoaded ? 'animate-spring-up' : 'opacity-0',
+                                        getStaggerClass(index),
+                                    ]"
+                                >
                                 <div class="space-y-3">
                                     <!-- User Header -->
                                     <div class="flex items-start justify-between gap-3">
@@ -334,7 +390,7 @@ const openEditModal = (user: User) => {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            class="flex-1 gap-2 rounded-xl active:scale-[0.98] transition-transform"
+                                            class="flex-1 gap-2 rounded-xl press-effect"
                                             @click="openEditModal(user)"
                                         >
                                             <Edit class="h-4 w-4" />
@@ -345,7 +401,8 @@ const openEditModal = (user: User) => {
                                                 <Button
                                                     variant="destructive"
                                                     size="sm"
-                                                    class="flex-1 gap-2 rounded-xl active:scale-[0.98] transition-transform"
+                                                    class="flex-1 gap-2 rounded-xl press-effect"
+                                                    @click="trigger('medium')"
                                                 >
                                                     <Trash2 class="h-4 w-4" />
                                                     Hapus
@@ -361,14 +418,14 @@ const openEditModal = (user: User) => {
                                                 </DialogHeader>
                                                 <DialogFooter class="flex-col gap-2 sm:flex-row">
                                                     <DialogClose as-child>
-                                                        <Button variant="outline" class="w-full sm:w-auto rounded-xl h-11">
+                                                        <Button variant="outline" class="w-full sm:w-auto rounded-xl h-11 press-effect">
                                                             Batal
                                                         </Button>
                                                     </DialogClose>
                                                     <Button
-                                                        @click="deleteUser(user.id)"
+                                                        @click="trigger('heavy'); deleteUser(user.id)"
                                                         variant="destructive"
-                                                        class="w-full sm:w-auto rounded-xl h-11 active:scale-[0.98] transition-transform"
+                                                        class="w-full sm:w-auto rounded-xl h-11 press-effect"
                                                     >
                                                         Hapus
                                                     </Button>
@@ -378,6 +435,7 @@ const openEditModal = (user: User) => {
                                     </div>
                                 </div>
                             </Card>
+                            </SwipeableListItem>
                         </div>
                         <!-- Desktop View: Table -->
                         <div class="hidden md:block overflow-x-auto">
@@ -430,9 +488,13 @@ const openEditModal = (user: User) => {
                             </thead>
                             <tbody>
                                 <tr
-                                    v-for="user in props.users.data"
+                                    v-for="(user, index) in props.users.data"
                                     :key="user.id"
-                                    class="border-b transition-colors hover:bg-muted/50"
+                                    :class="[
+                                        'border-b list-row-interactive',
+                                        isLoaded ? 'animate-fade-up' : 'opacity-0',
+                                        getStaggerClass(index),
+                                    ]"
                                 >
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-2">
@@ -476,7 +538,7 @@ const openEditModal = (user: User) => {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                class="rounded-xl active:scale-[0.98] transition-transform"
+                                                class="rounded-xl press-effect"
                                                 @click="openEditModal(user)"
                                             >
                                                 <Edit class="h-4 w-4" />
@@ -486,7 +548,8 @@ const openEditModal = (user: User) => {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        class="text-destructive hover:text-destructive rounded-xl active:scale-[0.98] transition-transform"
+                                                        class="text-destructive hover:text-destructive rounded-xl press-effect"
+                                                        @click="trigger('medium')"
                                                     >
                                                         <Trash2 class="h-4 w-4" />
                                                     </Button>
@@ -504,14 +567,14 @@ const openEditModal = (user: User) => {
                                                     </DialogHeader>
                                                     <DialogFooter class="flex-col gap-2 sm:flex-row">
                                                         <DialogClose as-child>
-                                                            <Button variant="outline" class="w-full sm:w-auto rounded-xl h-11">
+                                                            <Button variant="outline" class="w-full sm:w-auto rounded-xl h-11 press-effect">
                                                                 Batal
                                                             </Button>
                                                         </DialogClose>
                                                         <Button
-                                                            @click="deleteUser(user.id)"
+                                                            @click="trigger('heavy'); deleteUser(user.id)"
                                                             variant="destructive"
-                                                            class="w-full sm:w-auto rounded-xl h-11 active:scale-[0.98] transition-transform"
+                                                            class="w-full sm:w-auto rounded-xl h-11 press-effect"
                                                         >
                                                             Hapus
                                                         </Button>
@@ -540,9 +603,9 @@ const openEditModal = (user: User) => {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                class="h-9 w-9 rounded-xl p-0 active:scale-[0.98] transition-transform"
+                                class="h-9 w-9 rounded-xl p-0 press-effect"
                                 :disabled="props.users.current_page === 1"
-                                @click="router.get(`/users?${buildPaginationQuery(props.users.current_page - 1)}`)"
+                                @click="trigger('light'); router.get(`/users?${buildPaginationQuery(props.users.current_page - 1)}`)"
                             >
                                 <ChevronLeft class="h-4 w-4" />
                             </Button>
@@ -553,9 +616,9 @@ const openEditModal = (user: User) => {
                                         v-if="page !== '...'"
                                         variant="outline"
                                         size="sm"
-                                        class="h-9 min-w-[2.5rem] rounded-xl text-xs active:scale-[0.98] transition-transform"
+                                        class="h-9 min-w-[2.5rem] rounded-xl text-xs press-effect"
                                         :class="{ 'bg-primary text-primary-foreground': page === props.users.current_page }"
-                                        @click="router.get(`/users?${buildPaginationQuery(page)}`)"
+                                        @click="trigger('light'); router.get(`/users?${buildPaginationQuery(page)}`)"
                                     >
                                         {{ page }}
                                     </Button>
@@ -566,9 +629,9 @@ const openEditModal = (user: User) => {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                class="h-9 w-9 rounded-xl p-0 active:scale-[0.98] transition-transform"
+                                class="h-9 w-9 rounded-xl p-0 press-effect"
                                 :disabled="props.users.current_page === props.users.last_page"
-                                @click="router.get(`/users?${buildPaginationQuery(props.users.current_page + 1)}`)"
+                                @click="trigger('light'); router.get(`/users?${buildPaginationQuery(props.users.current_page + 1)}`)"
                             >
                                 <ChevronRight class="h-4 w-4" />
                             </Button>
@@ -576,7 +639,8 @@ const openEditModal = (user: User) => {
                     </div>
                 </CardContent>
             </Card>
-        </div>
+            </div>
+        </PullToRefresh>
 
         <!-- Edit User Modal -->
         <EditUserModal
